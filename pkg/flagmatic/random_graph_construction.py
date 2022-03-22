@@ -34,8 +34,8 @@ from sage.arith.all import binomial
 from sage.combinat.all import Tuples, Combinations
 from sage.rings.all import Integer, RationalField
 
-from construction import *
-from three_graph_flag import *
+from .construction import *
+from .three_graph_flag import *
 
 
 class RandomGraphConstruction(Construction):
@@ -45,7 +45,7 @@ class RandomGraphConstruction(Construction):
     Provides an object that represents the limit object of the following construction:
     Take a random 2-graph `G` on `n` vertices, where each edge appears with probability
     :math:`1/2` and use it to make a 3-graph `H` on the same vertex set, by placing a 3-edge in
-    H if and only if the three vertices induce an odd number of edges in G.	:math:`\pi`
+    H if and only if the three vertices induce an odd number of edges in G.    :math:`\pi`
     """
 
     def __init__(self):

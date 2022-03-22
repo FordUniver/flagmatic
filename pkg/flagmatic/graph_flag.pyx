@@ -43,7 +43,7 @@ cdef class GraphFlag (HypergraphFlag):
                         super(GraphFlag, self).__init__(g.order(), r=2, oriented=False)
                         vertices = g.vertices()
                         for edge in g.edge_iterator():
-                                self.add_edge(map(lambda i : vertices.index(i) + 1, edge[:2]))
+                                self.add_edge(list(map(lambda i : vertices.index(i) + 1, edge[:2])))
                 else:
                         super(GraphFlag, self).__init__(representation=representation, r=2, oriented=False)
                         
@@ -74,9 +74,9 @@ cdef class GraphFlag (HypergraphFlag):
 
 
         @classmethod
-        def generate_graphs(cls, n, forbidden_edge_numbers=None, forbidden_graphs=None, forbidden_induced_graphs=None):
+        def generate_graphs(cls, n, forbidden_edge_numbers=None, forbidden_graphs=None, forbidden_induced_graphs=None, use_mp=False, show_progress=False):
                 return HypergraphFlag.generate_flags(n, cls(), r=2, oriented=False, forbidden_edge_numbers=forbidden_edge_numbers,
-                        forbidden_graphs=forbidden_graphs, forbidden_induced_graphs=forbidden_induced_graphs)
+                        forbidden_graphs=forbidden_graphs, forbidden_induced_graphs=forbidden_induced_graphs, use_mp=use_mp, show_progress=show_progress)
 
 
         def Graph(self):

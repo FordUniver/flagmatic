@@ -37,7 +37,7 @@ http://cordis.europa.eu/project/rcn/104324_en.html
 
 #include "interrupt.pxi"
 #include "stdsage.pxi"
-include "cdefs.pxi"
+#include "cdefs.pxi"
 
 # This doesn't seem to be remembered from .pxd file
 # 35 + 42 + 7 = 84, 84 * 3 = 252
@@ -52,13 +52,54 @@ import sys # remove this, just for testing
 import numpy
 cimport numpy
 
+from tqdm import tqdm
+import multiprocessing as mp
+
 from sage.arith.all import binomial, falling_factorial
 from sage.combinat.all import Combinations, Permutations, Tuples, Subsets
 from sage.rings.all import Integer, QQ, ZZ
 from sage.matrix.all import matrix, block_matrix
 from sage.modules.misc import gram_schmidt
                 
+def process_small_graphs_mp(sg, n, s, max_ne, possible_edges, oriented, forbidden_edge_numbers, forbidden_graphs, forbidden_induced_graphs):
+    pe = sg.ne
+    ds = sg.degrees()
+    maxd = max(ds[s:] + (0,))
+    
+    graph_list, hash_list = [], []
 
+    for ne in range(maxd, max_ne + 1):
+
+            for nb in Combinations(possible_edges, ne):
+
+                    # For oriented graphs, can't have bidirected edges.
+                    # TODO: exclude these in a more efficient way!
+                    if oriented:
+                            if any(e in nb and (e[1], e[0]) in nb for e in possible_edges):
+                                    continue
+
+                    ng = sg.__copy__()
+                    ng.n = n
+                    for e in nb:
+                            ng.add_edge(e)
+
+                    if not forbidden_edge_numbers is None and ng.has_forbidden_edge_numbers(forbidden_edge_numbers, must_have_highest=True):
+                            continue
+
+                    if not forbidden_graphs is None and ng.has_forbidden_graphs(forbidden_graphs, must_have_highest=True):
+                            continue
+
+                    if not forbidden_induced_graphs is None and ng.has_forbidden_graphs(forbidden_induced_graphs, must_have_highest=True, induced=True):
+                            continue
+
+                    ng.make_minimal_isomorph()
+                    ng_hash = hash(ng)
+                    if ng_hash not in hash_list:
+                        graph_list.append(ng)
+                        hash_list.append(ng_hash)
+                        
+    return graph_list, hash_list
+    
 
 cdef class HypergraphFlag (Flag):
 
@@ -84,7 +125,7 @@ cdef class HypergraphFlag (Flag):
                         self.ne = 0
                         self._t = 0
 
-                elif isinstance(representation, basestring):
+                elif isinstance(representation, str):
                         self.init_from_string(representation)
 
                 elif representation in ZZ:
@@ -477,7 +518,7 @@ cdef class HypergraphFlag (Flag):
         
 
         @classmethod
-        def generate_flags(cls, n, tg, r=3, oriented=False, multiplicity=1, forbidden_edge_numbers=None, forbidden_graphs=None, forbidden_induced_graphs=None):
+        def generate_flags(cls, n, tg, r=3, oriented=False, multiplicity=1, forbidden_edge_numbers=None, forbidden_graphs=None, forbidden_induced_graphs=None, use_mp=False, show_progress=False):
                 """
                 For an integer n, and a type tg, returns a list of all tg-flags on n
                 vertices, that satisfy certain constraints.
@@ -527,7 +568,7 @@ cdef class HypergraphFlag (Flag):
                 hashes = set()
                 
                 smaller_graphs = cls.generate_flags(n - 1, tg, r, oriented, multiplicity, forbidden_edge_numbers=forbidden_edge_numbers,
-                        forbidden_graphs=forbidden_graphs, forbidden_induced_graphs=forbidden_induced_graphs)
+                        forbidden_graphs=forbidden_graphs, forbidden_induced_graphs=forbidden_induced_graphs, use_mp=use_mp)
                 
                 possible_edges = []
         
@@ -543,50 +584,69 @@ cdef class HypergraphFlag (Flag):
         
                 if multiplicity > 1:
                         possible_edges = sum(([e] * multiplicity for e in possible_edges), [])
-        
-                for sg in smaller_graphs:
                 
-                        pe = sg.ne
-                        ds = sg.degrees()
-                        maxd = max(ds[s:] + (0,))
-                                
-                        for ne in range(maxd, max_ne + 1):
-                        
-                                for nb in Combinations(possible_edges, ne):
-        
-                                        # For oriented graphs, can't have bidirected edges.
-                                        # TODO: exclude these in a more efficient way!
-                                        if oriented:
-                                                if any(e in nb and (e[1], e[0]) in nb for e in possible_edges):
-                                                        continue
-                                                        
-                                        ng = sg.__copy__()
-                                        ng.n = n
-                                        for e in nb:
-                                                ng.add_edge(e)
-        
-                                        if not forbidden_edge_numbers is None and ng.has_forbidden_edge_numbers(forbidden_edge_numbers, must_have_highest=True):
-                                                continue
-        
-                                        if not forbidden_graphs is None and ng.has_forbidden_graphs(forbidden_graphs, must_have_highest=True):
-                                                continue
-        
-                                        if not forbidden_induced_graphs is None and ng.has_forbidden_graphs(forbidden_induced_graphs, must_have_highest=True, induced=True):
-                                                continue
-        
-                                        ng.make_minimal_isomorph()
-                                        ng_hash = hash(ng)
-                                        if not ng_hash in hashes:
-                                                new_graphs.append(ng)
-                                                hashes.add(ng_hash)
+                if use_mp:
+                    arguments = [(sg, n, s, max_ne, possible_edges, oriented, forbidden_edge_numbers, forbidden_graphs, forbidden_induced_graphs) for sg in smaller_graphs]
+
+                    p = mp.Pool()
+                    for graph_list, hash_list in p.starmap(process_small_graphs_mp, tqdm(arguments) if show_progress else arguments):
+                        for ng, ng_hash in zip(graph_list, hash_list):
+                            if not ng_hash in hashes:
+                                new_graphs.append(ng)
+                                hashes.add(ng_hash)
+                    p.close()
+                
+                else:
+                    for sg in (tqdm(smaller_graphs) if show_progress else smaller_graphs):
+                        graph_list, hash_list = process_small_graphs_mp(sg, n, s, max_ne, possible_edges, oriented, forbidden_edge_numbers, forbidden_graphs, forbidden_induced_graphs)
+                        for ng, ng_hash in zip(graph_list, hash_list):
+                            if not ng_hash in hashes:
+                                new_graphs.append(ng)
+                                hashes.add(ng_hash)
+                
+                # for sg in smaller_graphs:
+                # 
+                #         pe = sg.ne
+                #         ds = sg.degrees()
+                #         maxd = max(ds[s:] + (0,))
+                #                 
+                #         for ne in range(maxd, max_ne + 1):
+                #         
+                #                 for nb in Combinations(possible_edges, ne):
+                # 
+                #                         # For oriented graphs, can't have bidirected edges.
+                #                         # TODO: exclude these in a more efficient way!
+                #                         if oriented:
+                #                                 if any(e in nb and (e[1], e[0]) in nb for e in possible_edges):
+                #                                         continue
+                #                                         
+                #                         ng = sg.__copy__()
+                #                         ng.n = n
+                #                         for e in nb:
+                #                                 ng.add_edge(e)
+                # 
+                #                         if not forbidden_edge_numbers is None and ng.has_forbidden_edge_numbers(forbidden_edge_numbers, must_have_highest=True):
+                #                                 continue
+                # 
+                #                         if not forbidden_graphs is None and ng.has_forbidden_graphs(forbidden_graphs, must_have_highest=True):
+                #                                 continue
+                # 
+                #                         if not forbidden_induced_graphs is None and ng.has_forbidden_graphs(forbidden_induced_graphs, must_have_highest=True, induced=True):
+                #                                 continue
+                # 
+                #                         ng.make_minimal_isomorph()
+                #                         ng_hash = hash(ng)
+                #                         if not ng_hash in hashes:
+                #                                 new_graphs.append(ng)
+                #                                 hashes.add(ng_hash)
         
                 return new_graphs
 
 
         @classmethod
-        def generate_graphs(cls, n, r=3, oriented=False, multiplicity=1, forbidden_edge_numbers=None, forbidden_graphs=None, forbidden_induced_graphs=None):
+        def generate_graphs(cls, n, r=3, oriented=False, multiplicity=1, forbidden_edge_numbers=None, forbidden_graphs=None, forbidden_induced_graphs=None, use_mp=False, show_progress=False):
                 return cls.generate_flags(n, cls(r=r, oriented=oriented, multiplicity=multiplicity), r, oriented, multiplicity, forbidden_edge_numbers=forbidden_edge_numbers,
-                        forbidden_graphs=forbidden_graphs, forbidden_induced_graphs=forbidden_induced_graphs)
+                        forbidden_graphs=forbidden_graphs, forbidden_induced_graphs=forbidden_induced_graphs, use_mp=use_mp, show_progress=show_progress)
 
 
         @classmethod
@@ -602,7 +662,7 @@ cdef class HypergraphFlag (Flag):
                 for fg in flags:
                         mfgs = str(fg)
                         for perm in Permutations(range(1, s + 1)):
-                                permplus = list(perm) + range(s + 1, fg.n + 1)
+                                permplus = list(perm) + list(range(s + 1, fg.n + 1))
                                 ntg = tg.__copy__()
                                 ntg.relabel(perm)
                                 nfg = fg.__copy__()
@@ -821,7 +881,7 @@ cdef class HypergraphFlag (Flag):
                                         if ntgs < mintgs:
                                                 mintgs = ntgs
                                                 minh = h.__copy__()
-                                                minh.relabel(perm + range(h.t + 1, h.n + 1))
+                                                minh.relabel(perm + list(range(h.t + 1, h.n + 1)))
                                 h = minh                
                         h.make_minimal_isomorph()
                 
@@ -1487,7 +1547,7 @@ cdef class HypergraphFlag (Flag):
 
                 cdef HypergraphFlag g, t, f1, f2
                 
-                rarray = numpy.zeros([0, 5], dtype=numpy.int)
+                rarray = numpy.zeros([0, 5], dtype=int)
                 row = 0
                 
                 #sig_on()
@@ -1656,7 +1716,7 @@ cdef class HypergraphFlag (Flag):
 
                 cdef HypergraphFlag g, t, f1, f2
                 
-                rarray = numpy.zeros([0, 5], dtype=numpy.int)
+                rarray = numpy.zeros([0, 5], dtype=int)
                 row = 0
                 
                 #sig_on()
@@ -1892,7 +1952,7 @@ cdef int *generate_permutations_fixing(int n, int s, int *number_of):
 
         # see if we've already generated it!
         key = (n, s)
-        if key in previous_permutations.iterkeys():
+        if key in previous_permutations.keys():
         
                 cib = <combinatorial_info_block>previous_permutations[key]
                 fac = cib.np
@@ -1942,7 +2002,7 @@ cdef int *generate_combinations(int n, int s, int *number_of):
 
         # see if we've already generated it!
         key = (n, s)
-        if key in previous_combinations.iterkeys():
+        if key in previous_combinations.keys():
         
                 cib = <combinatorial_info_block>previous_combinations[key]
                 fac = cib.np
@@ -1986,7 +2046,7 @@ cdef int *generate_combinations_plus(int n, int s, int *number_of):
 
         # see if we've already generated it!
         key = (n, s)
-        if key in previous_combinations_plus.iterkeys():
+        if key in previous_combinations_plus.keys():
         
                 cib = <combinatorial_info_block>previous_combinations_plus[key]
                 fac = cib.np
@@ -2030,7 +2090,7 @@ cdef int *generate_pair_combinations(int n, int s, int m1, int m2, int *number_o
 
         # see if we've already generated it!
         key = (n, s, m1, m2)
-        if key in previous_pair_combinations.iterkeys():
+        if key in previous_pair_combinations.keys():
         
                 cib = <combinatorial_info_block>previous_pair_combinations[key]
                 fac = cib.np
@@ -2098,7 +2158,7 @@ cdef int *generate_equal_pair_combinations(int n, int s, int m, int *number_of):
         
         # see if we've already generated it!
         key = (n, s, m)
-        if key in previous_equal_pair_combinations.iterkeys():
+        if key in previous_equal_pair_combinations.keys():
                 
                 cib = <combinatorial_info_block>previous_equal_pair_combinations[key]
                 fac = cib.np
@@ -2185,4 +2245,4 @@ def print_graph_block(graph_block gb):
 
         for i in range(gb.len):
                 g = <HypergraphFlag ?> gb.graphs[i]
-                print str(g)
+                print(g)

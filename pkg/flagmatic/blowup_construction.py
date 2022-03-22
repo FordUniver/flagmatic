@@ -37,12 +37,36 @@ from sage.rings.all import Integer, RationalField
 from sage.interfaces.gap import gap
 from copy import copy
 
-from three_graph_flag import *
-from graph_flag import *
-from oriented_graph_flag import *
-from construction import *
+from .three_graph_flag import *
+from .graph_flag import *
+from .oriented_graph_flag import *
+from .construction import *
 
 
+def subgraph_densities_mp(P, n, cn, weights, graph, phantom_edge):
+    factor = factorial(n)
+    for i in range(1, cn + 1):
+        factor /= factorial(P.count(i))
+    if weights:
+        for v in P:
+            factor *= weights[v - 1]
+    ig = graph.degenerate_induced_subgraph(P)
+    igc = copy(ig)  # copy for phantom edge
+    ig.make_minimal_isomorph()
+    ghash = hash(ig)
+    
+    contains_phantom_edge = False
+    gchash = None
+    if phantom_edge is not None and all(x in P for x in phantom_edge):
+        contains_phantom_edge = True
+        phantom_edge = [P.index(x) + 1 for x in phantom_edge]
+        igc.add_edge(phantom_edge)
+        igc.make_minimal_isomorph()
+        gchash = hash(igc)
+    
+    return ghash, ig, gchash, igc, factor, contains_phantom_edge
+
+    
 class BlowupConstruction(Construction):
 
     def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False):
@@ -104,40 +128,57 @@ class BlowupConstruction(Construction):
         total = Integer(0)
         sharp_graph_counts = {}
         sharp_graphs = []
-
-        for P in UnorderedTuples(range(1, cn + 1), n):
-
-            factor = factorial(n)
-            for i in range(1, cn + 1):
-                factor /= factorial(P.count(i))
-
-            if self._weights:
-                for v in P:
-                    factor *= self._weights[v - 1]
-
-            ig = self._graph.degenerate_induced_subgraph(P)
-            igc = copy(ig)  # copy for phantom edge
-            ig.make_minimal_isomorph()
-
-            ghash = hash(ig)
+        
+        import multiprocessing as mp
+        p = mp.Pool()
+        arguments = [(P, n, cn, self._weights, self._graph, self._phantom_edge if hasattr(self, "_phantom_edge") else None) for P in UnorderedTuples(range(1, cn + 1), n)]
+        for ghash, ig, gchash, igc, factor, contains_phantom_edge in p.starmap(subgraph_densities_mp, arguments):
             if ghash in sharp_graph_counts:
                 sharp_graph_counts[ghash] += factor
             else:
                 sharp_graphs.append(ig)
                 sharp_graph_counts[ghash] = factor
-
             total += factor
-
-            if hasattr(self, "_phantom_edge") and all(x in P for x in self._phantom_edge):
-                phantom_edge = [P.index(x) + 1 for x in self._phantom_edge]
-                igc.add_edge(phantom_edge)
-                igc.make_minimal_isomorph()
-
-                ghash = hash(igc)
-                if not ghash in sharp_graph_counts:
+            
+            if contains_phantom_edge:
+                if not gchash in sharp_graph_counts:
                     sharp_graphs.append(igc)
-                    sharp_graph_counts[ghash] = Integer(0)
+                    sharp_graph_counts[gchash] = Integer(0)
+        p.close()
 
+        # for P in UnorderedTuples(range(1, cn + 1), n):
+        # 
+        #     factor = factorial(n)
+        #     for i in range(1, cn + 1):
+        #         factor /= factorial(P.count(i))
+        # 
+        #     if self._weights:
+        #         for v in P:
+        #             factor *= self._weights[v - 1]
+        # 
+        #     ig = self._graph.degenerate_induced_subgraph(P)
+        #     igc = copy(ig)  # copy for phantom edge
+        #     ig.make_minimal_isomorph()
+        # 
+        #     ghash = hash(ig)
+        #     if ghash in sharp_graph_counts:
+        #         sharp_graph_counts[ghash] += factor
+        #     else:
+        #         sharp_graphs.append(ig)
+        #         sharp_graph_counts[ghash] = factor
+        # 
+        #     total += factor
+        # 
+        #     if hasattr(self, "_phantom_edge") and all(x in P for x in self._phantom_edge):
+        #         phantom_edge = [P.index(x) + 1 for x in self._phantom_edge]
+        #         igc.add_edge(phantom_edge)
+        #         igc.make_minimal_isomorph()
+        # 
+        #         ghash = hash(igc)
+        #         if not ghash in sharp_graph_counts:
+        #             sharp_graphs.append(igc)
+        #             sharp_graph_counts[ghash] = Integer(0)
+        
         return [(g, sharp_graph_counts[hash(g)] / total) for g in sharp_graphs]
 
     def zero_eigenvectors(self, tg, flags):
@@ -264,7 +305,7 @@ class BlowupConstruction(Construction):
         orb_reps = {}
         total = 0
 
-        for ot, length in set_orb_reps.iteritems():
+        for ot, length in set_orb_reps.items():
 
             ne = len(ot)
             for ci in range(len(combs)):
@@ -288,7 +329,7 @@ class BlowupConstruction(Construction):
 
         t_total, t_orb_reps = self.tuple_orbit_reps(s)
 
-        for t_rep, t_factor in t_orb_reps.iteritems():
+        for t_rep, t_factor in t_orb_reps.items():
 
             for tp in Permutations(t_rep):
 
@@ -300,7 +341,7 @@ class BlowupConstruction(Construction):
 
                 row = [0] * len(flags)
 
-                for P, factor in orb_reps.iteritems():
+                for P, factor in orb_reps.items():
 
                     ig = self._graph.degenerate_induced_subgraph(P)
                     ig.t = s
@@ -324,7 +365,7 @@ class BlowupConstruction(Construction):
 
         sys.stdout.write("Found %d orbits.\n" % len(orb_reps))
 
-        for P, factor in orb_reps.iteritems():
+        for P, factor in orb_reps.items():
 
             ig = self._graph.degenerate_induced_subgraph(P)
             ig.make_minimal_isomorph()
@@ -340,18 +381,18 @@ class BlowupConstruction(Construction):
 
 
 def GraphBlowupConstruction(graph, **kwargs):
-    if isinstance(graph, basestring):
+    if isinstance(graph, str):
         graph = GraphFlag(graph)
     return BlowupConstruction(graph, **kwargs)
 
 
 def ThreeGraphBlowupConstruction(graph, **kwargs):
-    if isinstance(graph, basestring):
+    if isinstance(graph, str):
         graph = ThreeGraphFlag(graph)
     return BlowupConstruction(graph, **kwargs)
 
 
 def OrientedGraphBlowupConstruction(graph, **kwargs):
-    if isinstance(graph, basestring):
+    if isinstance(graph, str):
         graph = OrientedGraphFlag(graph)
     return BlowupConstruction(graph, **kwargs)
