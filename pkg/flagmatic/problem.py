@@ -1932,9 +1932,9 @@ class Problem(SageObject):
            optimal value seems to depend on the problem and solver used.
         """
 
-        num_graphs = len(self._graphs)
-        num_types = len(self._types)
-        num_active_densities = len(self._active_densities)
+        num_graphs = Integer(len(self._graphs))
+        num_types = Integer(len(self._types))
+        num_active_densities = Integer(len(self._active_densities))
 
         self._sdp_initial_point_filename = os.path.join(str(SAGE_TMP), "sdp.ini-s")
 
