@@ -3881,7 +3881,7 @@ class Problem(SageObject):
             
             NF = Fgraph.n
             NT = Tgraph.n
-            Fgraph_vertex_set = range(1,NF+1)
+            Fgraph_vertex_set = list(range(1,NF+1))
             
             combs = Combinations(range(1,NF+1), NT)
             neighbourhoods_in_TinF = list()
