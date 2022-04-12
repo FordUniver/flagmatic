@@ -3753,9 +3753,9 @@ class Problem(SageObject):
         # -----------------------------------
 
         if forbidden: # if any forbidden graphs
-          for g in forbidden:
-            if g in Fblow.subgraphs(g.n):
-                break
+            for g in forbidden:
+                if g in Fblow.subgraphs(g.n):
+                    break
             else:
                 assumption12 = True
         else: # vacuously true
@@ -3793,8 +3793,6 @@ class Problem(SageObject):
         # ---------- CLAIM 3 -----------
         # every sharp graph of order N admits a strong homomorphism into F
         # ------------------------------
-        
-
         c_subgraphs = self._construction.subgraphs(self.n) # these are subgraphs of construction
         num_embeddable = 0
         num_sharp = 0
@@ -3815,8 +3813,7 @@ class Problem(SageObject):
 
         # ---------- CLAIM 2 -----------
         # claim2a: tgraph is uniquely embeddable
-        # claim2b: different vertices of F attach differently to tgraph (when embedded in F)
-        
+        # claim2b: different vertices of F attach differently to tgraph (when embedded in F)t
         # ------------------------------
         claim2a = False # unique embeddability
         claim2b = False # distinct attachment
@@ -4043,7 +4040,7 @@ class Problem(SageObject):
         return
     
 
-    def verify_perfect_stability(self, fgraph=None):
+    def verify_perfect_stability(self, fgraph=None, solver='csdp', denominator=2**20):
         """Verify conditions of Thm 7.1 for Perfect Stability.
 
         Conditions:
