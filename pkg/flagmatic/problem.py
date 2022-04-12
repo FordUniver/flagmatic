@@ -3496,7 +3496,7 @@ class Problem(SageObject):
             sys.stdout.write("Cannot open file for writing.\n")
 
 
-    def verify_stability(self, tgraph, fgraph):
+    def verify_stability(self, tgraph, fgraph, solver='csdp', denominator=2**20):
 
         """
         INPUT:
@@ -3645,8 +3645,8 @@ class Problem(SageObject):
                 self._states[state_name] = "no"
         self.generate_flags(order=self._n)
         self.write_sdp_input_file()
-        self.solve_sdp(import_solution_file=None)
-        self.make_exact()
+        self.solve_sdp(solver=solver, import_solution_file=None)
+        self.make_exact(denominator=denominator)
 
         if not self._minimize:
             if self._bound < thebound:
@@ -3677,7 +3677,7 @@ class Problem(SageObject):
         
 
 
-    def verify_robust_stability(self, tgraph, fgraph=None):
+    def verify_robust_stability(self, tgraph, fgraph=None, solver='csdp', denominator=2**20):
 
         """
         INPUT:
@@ -3962,8 +3962,8 @@ class Problem(SageObject):
                                        mode=self._mode)
 
 
-            newproblem.solve_sdp(import_solution_file=None)
-            newproblem.make_exact()
+            newproblem.solve_sdp(solver=solver, import_solution_file=None)
+            newproblem.make_exact(denominator=denominator)
             
 
             if not self._minimize:
@@ -4197,8 +4197,8 @@ class Problem(SageObject):
                                            compute_products=self._compute_products,
                                            mode=self._mode)
             
-            perfstabproblem.solve_sdp(solver="csdp")
-            perfstabproblem.make_exact()
+            perfstabproblem.solve_sdp(solver=solver)
+            perfstabproblem.make_exact(denominator=denominator)
             
             new_bound = perfstabproblem._bound
             
