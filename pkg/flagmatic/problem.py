@@ -148,10 +148,10 @@ def LDLdecomposition(M):  # TODO: does this handle matrices with zero eigenvalue
         D.set_immutable()
         return D, D
     L = copy(MS.identity_matrix())
-    for i in xrange(M.nrows()):
-        for j in xrange(i):
-            L[i, j] = (Integer(1) / D[j, j]) * (M[i, j] - sum(L[i, k] * L[j, k] * D[k, k] for k in xrange(j)))
-        D[i, i] = M[i, i] - sum(L[i, k] ** 2 * D[k, k] for k in xrange(i))
+    for i in range(M.nrows()):
+        for j in range(i):
+            L[i, j] = (Integer(1) / D[j, j]) * (M[i, j] - sum(L[i, k] * L[j, k] * D[k, k] for k in range(j)))
+        D[i, i] = M[i, i] - sum(L[i, k] ** 2 * D[k, k] for k in range(i))
     L.set_immutable()
     D.set_immutable()
     return L, D
