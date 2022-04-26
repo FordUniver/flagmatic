@@ -66,7 +66,7 @@ def subgraph_densities_mp(P, n, cn, weights, graph, phantom_edge):
     
     return ghash, ig, gchash, igc, factor, contains_phantom_edge
 
-def symm_subgraph_densities_mp(P, graph, factor)
+def symm_subgraph_densities_mp(P, graph, factor):
     ig = graph.degenerate_induced_subgraph(P)
     ig.make_minimal_isomorph()
     ghash = hash(ig)
