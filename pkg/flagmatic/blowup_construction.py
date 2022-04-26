@@ -42,6 +42,8 @@ from .graph_flag import *
 from .oriented_graph_flag import *
 from .construction import *
 
+from tqdm import tqdm
+
 
 def subgraph_densities_mp(P, n, cn, weights, graph, phantom_edge):
     factor = factorial(n)
