@@ -366,6 +366,8 @@ class BlowupConstruction(Construction):
 
         sharp_graph_counts = {}
         sharp_graphs = []
+        
+        print(f"Checking orbits!")
 
         total, orb_reps = self.tuple_orbit_reps(n)
 
