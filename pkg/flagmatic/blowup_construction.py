@@ -66,6 +66,12 @@ def subgraph_densities_mp(P, n, cn, weights, graph, phantom_edge):
     
     return ghash, ig, gchash, igc, factor, contains_phantom_edge
 
+def symm_subgraph_densities_mp(P, graph, factor)
+    ig = graph.degenerate_induced_subgraph(P)
+    ig.make_minimal_isomorph()
+    ghash = hash(ig)
+    
+    return ghash, factor
     
 class BlowupConstruction(Construction):
 
@@ -365,17 +371,27 @@ class BlowupConstruction(Construction):
 
         sys.stdout.write("Found %d orbits.\n" % len(orb_reps))
 
-        for P, factor in orb_reps.items():
-
-            ig = self._graph.degenerate_induced_subgraph(P)
-            ig.make_minimal_isomorph()
-
-            ghash = hash(ig)
+        import multiprocessing as mp
+        p = mp.Pool()
+        arguments = [(P, self._graph, factor) for P, factor in orb_reps.items()]
+        for ghash, factor in p.starmap(symm_subgraph_densities_mp, arguments):
             if ghash in sharp_graph_counts:
                 sharp_graph_counts[ghash] += factor
             else:
                 sharp_graphs.append(ig)
                 sharp_graph_counts[ghash] = factor
+        
+        # for P, factor in orb_reps.items():
+        # 
+        #     ig = self._graph.degenerate_induced_subgraph(P)
+        #     ig.make_minimal_isomorph()
+        # 
+        #     ghash = hash(ig)
+        #     if ghash in sharp_graph_counts:
+        #         sharp_graph_counts[ghash] += factor
+        #     else:
+        #         sharp_graphs.append(ig)
+        #         sharp_graph_counts[ghash] = factor
 
         return [(g, sharp_graph_counts[hash(g)] / Integer(total)) for g in sharp_graphs]
 

@@ -1236,7 +1236,6 @@ class Problem(SageObject):
 
         sys.stdout.write("Determining which graphs appear in construction...\n")
         
-        # TODO: mp subgraph densities
         sharp_graphs = construction.subgraph_densities(self._n)
         target_densities = [0 for j in range(num_densities)]
         self._sharp_graphs = []
