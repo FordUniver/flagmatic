@@ -73,6 +73,7 @@ def symm_subgraph_densities_mp(P, graph, factor):
     
     return ghash, factor
     
+    
 class BlowupConstruction(Construction):
 
     def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False):
@@ -269,6 +270,8 @@ class BlowupConstruction(Construction):
             return 1, {() : 1}
 
         gens = self._graph.automorphism_group_gens()
+        
+        print(f"Got automorphisms")
 
         # Pass generators to GAP to create a group for us.
 
@@ -300,9 +303,10 @@ class BlowupConstruction(Construction):
 
         #sys.stdout.write("\n")
 
+        print(f"Combs loop")
         combs = [tuple(c) for c in Compositions(k - s)]
         factors = []
-        for c in combs:
+        for c in tqdm(combs):
             factor = factorial(k - s)
             for x in c:
                 factor /= factorial(x)
@@ -311,7 +315,8 @@ class BlowupConstruction(Construction):
         orb_reps = {}
         total = 0
 
-        for ot, length in set_orb_reps.items():
+        print(f"set_orb_reps loop")
+        for ot, length in tqdm(set_orb_reps.items()):
 
             ne = len(ot)
             for ci in range(len(combs)):
