@@ -270,8 +270,6 @@ class BlowupConstruction(Construction):
             return 1, {() : 1}
 
         gens = self._graph.automorphism_group_gens()
-        
-        print(f"Got automorphisms")
 
         # Pass generators to GAP to create a group for us.
 
@@ -280,6 +278,8 @@ class BlowupConstruction(Construction):
         if len(prefix) > 0:
             gap.eval("g := Stabilizer(g, %s, OnTuples);" % list(set(prefix)))
 
+        print(f"S loop")
+            
         S = []
         for i in range(1, k - s + 1):
             S.extend([tuple(sorted(list(x))) for x in Subsets(self._graph.n, i)])
@@ -288,18 +288,22 @@ class BlowupConstruction(Construction):
 
         #sys.stdout.write("Calculating orbits")
 
-        while len(S) > 0:
+        total_len = len(S)
+        with tqdm(total=total_len) as pbar:
+            while len(S) > 0:
 
-            rep = list(S[0])
+                rep = list(S[0])
 
-            o = gap.new("Orbit(g, %s, OnSets);" % (rep,)).sage()
-            o = list(set([tuple(sorted(t)) for t in o]))
-            ot = o[0]
-            set_orb_reps[ot] = len(o)
-            for t in o:
-                S.remove(t)
-            #sys.stdout.write(".")
-            #sys.stdout.flush()
+                o = gap.new("Orbit(g, %s, OnSets);" % (rep,)).sage()
+                o = list(set([tuple(sorted(t)) for t in o]))
+                ot = o[0]
+                set_orb_reps[ot] = len(o)
+                for t in o:
+                    S.remove(t)
+                #sys.stdout.write(".")
+                #sys.stdout.flush()
+                
+                pbar.update(total_len - len(S))
 
         #sys.stdout.write("\n")
 
@@ -371,8 +375,6 @@ class BlowupConstruction(Construction):
 
         sharp_graph_counts = {}
         sharp_graphs = []
-        
-        print(f"Checking orbits!")
 
         total, orb_reps = self.tuple_orbit_reps(n)
 
