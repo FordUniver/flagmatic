@@ -73,7 +73,7 @@ def symm_subgraph_densities_mp(P, graph, factor):
     ig.make_minimal_isomorph()
     ghash = hash(ig)
     
-    return ghash, factor
+    return ig, ghash, factor
     
     
 class BlowupConstruction(Construction):
@@ -279,8 +279,6 @@ class BlowupConstruction(Construction):
         gap.eval("g := Group(%s);" % gen_str)
         if len(prefix) > 0:
             gap.eval("g := Stabilizer(g, %s, OnTuples);" % list(set(prefix)))
-
-        print(f"S loop")
             
         S = []
         for i in range(1, k - s + 1):
@@ -385,7 +383,7 @@ class BlowupConstruction(Construction):
         import multiprocessing as mp
         p = mp.Pool()
         arguments = [(P, self._graph, factor) for P, factor in orb_reps.items()]
-        for ghash, factor in p.starmap(symm_subgraph_densities_mp, arguments):
+        for ig, ghash, factor in p.starmap(symm_subgraph_densities_mp, arguments):
             if ghash in sharp_graph_counts:
                 sharp_graph_counts[ghash] += factor
             else:
