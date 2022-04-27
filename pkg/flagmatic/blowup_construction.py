@@ -307,10 +307,9 @@ class BlowupConstruction(Construction):
 
         #sys.stdout.write("\n")
 
-        print(f"Combs loop")
         combs = [tuple(c) for c in Compositions(k - s)]
         factors = []
-        for c in tqdm(combs):
+        for c in combs:
             factor = factorial(k - s)
             for x in c:
                 factor /= factorial(x)
@@ -319,8 +318,7 @@ class BlowupConstruction(Construction):
         orb_reps = {}
         total = 0
 
-        print(f"set_orb_reps loop")
-        for ot, length in tqdm(set_orb_reps.items()):
+        for ot, length in set_orb_reps.items():
 
             ne = len(ot)
             for ci in range(len(combs)):
