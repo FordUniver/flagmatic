@@ -394,7 +394,7 @@ class BlowupConstruction(Construction):
 
         if self.pool is not None:
             arguments = [(P, self._graph, factor) for P, factor in orb_reps.items()]
-            for ig, ghash, factor in p.starmap(symm_subgraph_densities_mp, arguments):
+            for ig, ghash, factor in self.pool.starmap(symm_subgraph_densities_mp, arguments):
                 if ghash in sharp_graph_counts:
                     sharp_graph_counts[ghash] += factor
                 else:
