@@ -44,7 +44,40 @@ from .construction import *
 
 from tqdm import tqdm
 
+def zero_eigenvectors_mp(tg, flags, tv, graph, cn, k, s, weights):
+    it = graph.degenerate_induced_subgraph(tv)
 
+    if not it.is_labelled_isomorphic(tg):
+        return NOne
+
+    total = Integer(0)
+    row = [0] * len(flags)
+
+    for ov in UnorderedTuples(range(1, cn + 1), k - s):
+
+        factor = factorial(k - s)
+        for i in range(1, cn + 1):
+            factor /= factorial(ov.count(i))
+
+        if weights:
+            for v in ov:
+                factor *= self._weights[v - 1]
+
+        ig = graph.degenerate_induced_subgraph(tv + ov)
+        ig.t = s
+        ig.make_minimal_isomorph()
+
+        for j in range(len(flags)):
+            if ig.is_labelled_isomorphic(flags[j]):
+                row[j] += factor
+                total += factor
+                break
+
+    for j in range(len(flags)):
+        row[j] /= total
+    
+    return row
+    
 def subgraph_densities_mp(P, n, cn, weights, graph, phantom_edge):
     factor = factorial(n)
     for i in range(1, cn + 1):
@@ -206,53 +239,60 @@ class BlowupConstruction(Construction):
         k = flags[0].n  # assume all flags the same order
 
         rows = []
+        
+        if self.pool is not None:
+            assert not hasattr(self, "_phantom_edge")
+            arguments = [(tg, flags, tv, self._graph, cn, k, s, self._weights) for tv in Tuples(range(1, cn + 1), s)]
+            for row self.pool.starmap(zero_eigenvectors_mp, arguments):
+                if row is not None: rows.append(row)
+            
+        else:
+            for tv in Tuples(range(1, cn + 1), s):
 
-        for tv in Tuples(range(1, cn + 1), s):
+                it = self._graph.degenerate_induced_subgraph(tv)
 
-            it = self._graph.degenerate_induced_subgraph(tv)
+                using_phantom_edge = False
+                phantom_edge = None
 
-            using_phantom_edge = False
-            phantom_edge = None
+                if hasattr(self, "_phantom_edge") and it.ne == tg.ne - 1:
+                    extra_edges = [e for e in tg if not e in it]
+                    if len(extra_edges) == 1:
+                        phantom_edge = extra_edges[0]
+                        if all(tv[phantom_edge[i] - 1] == self._phantom_edge[i] for i in range(tg.r)):
+                            it.add_edge(phantom_edge)
+                            using_phantom_edge = True
 
-            if hasattr(self, "_phantom_edge") and it.ne == tg.ne - 1:
-                extra_edges = [e for e in tg if not e in it]
-                if len(extra_edges) == 1:
-                    phantom_edge = extra_edges[0]
-                    if all(tv[phantom_edge[i] - 1] == self._phantom_edge[i] for i in range(tg.r)):
-                        it.add_edge(phantom_edge)
-                        using_phantom_edge = True
+                if not (using_phantom_edge or it.is_labelled_isomorphic(tg)):
+                    continue
 
-            if not (using_phantom_edge or it.is_labelled_isomorphic(tg)):
-                continue
+                total = Integer(0)
+                row = [0] * len(flags)
 
-            total = Integer(0)
-            row = [0] * len(flags)
+                for ov in UnorderedTuples(range(1, cn + 1), k - s):
 
-            for ov in UnorderedTuples(range(1, cn + 1), k - s):
+                    factor = factorial(k - s)
+                    for i in range(1, cn + 1):
+                        factor /= factorial(ov.count(i))
 
-                factor = factorial(k - s)
-                for i in range(1, cn + 1):
-                    factor /= factorial(ov.count(i))
+                    if self._weights:
+                        for v in ov:
+                            factor *= self._weights[v - 1]
 
-                if self._weights:
-                    for v in ov:
-                        factor *= self._weights[v - 1]
+                    ig = self._graph.degenerate_induced_subgraph(tv + ov)
+                    if using_phantom_edge:
+                        ig.add_edge(phantom_edge)
+                    ig.t = s
+                    ig.make_minimal_isomorph()
 
-                ig = self._graph.degenerate_induced_subgraph(tv + ov)
-                if using_phantom_edge:
-                    ig.add_edge(phantom_edge)
-                ig.t = s
-                ig.make_minimal_isomorph()
+                    for j in range(len(flags)):
+                        if ig.is_labelled_isomorphic(flags[j]):
+                            row[j] += factor
+                            total += factor
+                            break
 
                 for j in range(len(flags)):
-                    if ig.is_labelled_isomorphic(flags[j]):
-                        row[j] += factor
-                        total += factor
-                        break
-
-            for j in range(len(flags)):
-                row[j] /= total
-            rows.append(row)
+                    row[j] /= total
+                rows.append(row)
 
         return matrix_of_independent_rows(self._field, rows, len(flags))
 
