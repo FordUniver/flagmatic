@@ -2140,8 +2140,7 @@ class Problem(SageObject):
         child.close()
         self._sdp_solver_returncode = child.exitstatus
 
-        sys.stdout.write("Returncode is %d. Objective value is %s.\n" % (
-            self._sdp_solver_returncode, obj_val))
+        print(f"Returncode is {self._sdp_solver_returncode}. Objective value is {obj_val}.")
 
         # TODO: if program is infeasible, a returncode of 1 is given,
         # and output contains "infeasible"
