@@ -275,14 +275,12 @@ class BlowupConstruction(Construction):
             return 1, {() : 1}
 
         gens = self._graph.automorphism_group_gens()
-        
-        print(gens)
 
         # Pass generators to GAP to create a group for us.
 
         gen_str = ",".join("(" + "".join(str(cy) for cy in cys) + ")" for cys in gens)
         
-        print(gen_str)
+        print("g := Group(%s);" % gen_str)
         
         gap.eval("g := Group(%s);" % gen_str)
         if len(prefix) > 0:
