@@ -80,6 +80,8 @@ class BlowupConstruction(Construction):
 
     def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False, use_mp=True):
 
+        self.tuple_orbit_reps_dict = {}
+        
         self.pool = None
         if use_mp:
             import multiprocessing as mp
@@ -265,6 +267,9 @@ class BlowupConstruction(Construction):
 
     def tuple_orbit_reps(self, k, prefix=None):
 
+        if prefix is None and k in self.tuple_orbit_reps_dict.keys():
+            return self.tuple_orbit_reps_dict[k]
+        
         if prefix is None:
             prefix = []
 
@@ -335,6 +340,9 @@ class BlowupConstruction(Construction):
 
         # TODO: store them for later use!!!
                     
+        if prefix == []:
+             self.tuple_orbit_reps_dict[k] = (total, orb_reps)
+            
         return total, orb_reps
 
     def symm_zero_eigenvectors(self, tg, flags, flag_basis=None):
