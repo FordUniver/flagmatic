@@ -75,7 +75,6 @@ def symm_subgraph_densities_mp(P, graph, factor):
     
     return ig, ghash, factor
     
-    
 class BlowupConstruction(Construction):
 
     def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False, use_mp=True):
@@ -266,13 +265,13 @@ class BlowupConstruction(Construction):
     # necessary, but it is much faster than doing otherwise.
 
     def tuple_orbit_reps(self, k, prefix=None):
-
-        if prefix is None and k in self.tuple_orbit_reps_dict.keys():
-            return self.tuple_orbit_reps_dict[k]
         
         if prefix is None:
             prefix = []
 
+        if (k, tuple(prefix)) in self.tuple_orbit_reps_dict.keys():
+            return self.tuple_orbit_reps_dict[(k, tuple(prefix))]
+        
         s = len(prefix)
         tp = tuple(prefix)
         if s > k:
@@ -337,11 +336,8 @@ class BlowupConstruction(Construction):
                     weight = factors[ci] * length
                     orb_reps[t] = weight
                     total += weight
-
-        # TODO: store them for later use!!!
                     
-        if prefix == []:
-             self.tuple_orbit_reps_dict[k] = (total, orb_reps)
+        self.tuple_orbit_reps_dict[(k, tuple(prefix))] = (total, orb_reps)
             
         return total, orb_reps
 
@@ -350,10 +346,10 @@ class BlowupConstruction(Construction):
         s = tg.n
         k = flags[0].n  # assume all flags the same order
 
-        rows = []
-
         t_total, t_orb_reps = self.tuple_orbit_reps(s)
 
+        rows = []
+        
         # TODO: mp option
         
         for t_rep, t_factor in t_orb_reps.items():
