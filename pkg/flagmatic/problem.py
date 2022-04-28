@@ -1705,14 +1705,15 @@ class Problem(SageObject):
                 'fastmode': 0
             }
             
-        elif settings == "default":
-            settings = {}
             
         self._csdp_settings_filename = os.path.join(str(SAGE_TMP), "param.csdp")
         
         if os.path.exists(self._csdp_settings_filename):
             sys.stdout.write("Deleting existing CSDP settings file...\n")
             os.remove(self._csdp_settings_filename)
+        
+        elif settings == "default":
+            return 
         
         sys.stdout.write("Writing CSDP settings file...\n")
         
