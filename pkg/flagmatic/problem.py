@@ -2123,7 +2123,7 @@ class Problem(SageObject):
         # must be negated.
         obj_value_factor = 1.0 if self._minimize else -1.0
 
-        child = pexpect.spawnu(cmd, timeout=2**40)
+        child = pexpect.spawnu(cmd, timeout=2**32)
         obj_val = None
         self._sdp_solver_output = ""
         sys.stdout.write("Reading output file...\n")
