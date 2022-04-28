@@ -78,8 +78,13 @@ def symm_subgraph_densities_mp(P, graph, factor):
     
 class BlowupConstruction(Construction):
 
-    def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False):
+    def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False, use_mp=True):
 
+        self.pool = None
+        if use_mp:
+            import multiprocessing as mp
+            self.pool = mp.Pool()
+            
         if g.oriented and g.is_degenerate:
             raise NotImplementedError("degenerate oriented graphs not supported.")
 
@@ -138,55 +143,53 @@ class BlowupConstruction(Construction):
         sharp_graph_counts = {}
         sharp_graphs = []
         
-        import multiprocessing as mp
-        p = mp.Pool()
-        arguments = [(P, n, cn, self._weights, self._graph, self._phantom_edge if hasattr(self, "_phantom_edge") else None) for P in UnorderedTuples(range(1, cn + 1), n)]
-        for ghash, ig, gchash, igc, factor, contains_phantom_edge in p.starmap(subgraph_densities_mp, arguments):
-            if ghash in sharp_graph_counts:
-                sharp_graph_counts[ghash] += factor
-            else:
-                sharp_graphs.append(ig)
-                sharp_graph_counts[ghash] = factor
-            total += factor
-            
-            if contains_phantom_edge:
-                if not gchash in sharp_graph_counts:
-                    sharp_graphs.append(igc)
-                    sharp_graph_counts[gchash] = Integer(0)
-        p.close()
+        if self.pool is not None:
+            arguments = [(P, n, cn, self._weights, self._graph, self._phantom_edge if hasattr(self, "_phantom_edge") else None) for P in UnorderedTuples(range(1, cn + 1), n)]
+            for ghash, ig, gchash, igc, factor, contains_phantom_edge in self.pool.starmap(subgraph_densities_mp, arguments):
+                if ghash in sharp_graph_counts:
+                    sharp_graph_counts[ghash] += factor
+                else:
+                    sharp_graphs.append(ig)
+                    sharp_graph_counts[ghash] = factor
+                total += factor
 
-        # for P in UnorderedTuples(range(1, cn + 1), n):
-        # 
-        #     factor = factorial(n)
-        #     for i in range(1, cn + 1):
-        #         factor /= factorial(P.count(i))
-        # 
-        #     if self._weights:
-        #         for v in P:
-        #             factor *= self._weights[v - 1]
-        # 
-        #     ig = self._graph.degenerate_induced_subgraph(P)
-        #     igc = copy(ig)  # copy for phantom edge
-        #     ig.make_minimal_isomorph()
-        # 
-        #     ghash = hash(ig)
-        #     if ghash in sharp_graph_counts:
-        #         sharp_graph_counts[ghash] += factor
-        #     else:
-        #         sharp_graphs.append(ig)
-        #         sharp_graph_counts[ghash] = factor
-        # 
-        #     total += factor
-        # 
-        #     if hasattr(self, "_phantom_edge") and all(x in P for x in self._phantom_edge):
-        #         phantom_edge = [P.index(x) + 1 for x in self._phantom_edge]
-        #         igc.add_edge(phantom_edge)
-        #         igc.make_minimal_isomorph()
-        # 
-        #         ghash = hash(igc)
-        #         if not ghash in sharp_graph_counts:
-        #             sharp_graphs.append(igc)
-        #             sharp_graph_counts[ghash] = Integer(0)
+                if contains_phantom_edge:
+                    if not gchash in sharp_graph_counts:
+                        sharp_graphs.append(igc)
+                        sharp_graph_counts[gchash] = Integer(0)
+        else:
+            for P in UnorderedTuples(range(1, cn + 1), n):
+            
+                factor = factorial(n)
+                for i in range(1, cn + 1):
+                    factor /= factorial(P.count(i))
+            
+                if self._weights:
+                    for v in P:
+                        factor *= self._weights[v - 1]
+            
+                ig = self._graph.degenerate_induced_subgraph(P)
+                igc = copy(ig)  # copy for phantom edge
+                ig.make_minimal_isomorph()
+            
+                ghash = hash(ig)
+                if ghash in sharp_graph_counts:
+                    sharp_graph_counts[ghash] += factor
+                else:
+                    sharp_graphs.append(ig)
+                    sharp_graph_counts[ghash] = factor
+            
+                total += factor
+            
+                if hasattr(self, "_phantom_edge") and all(x in P for x in self._phantom_edge):
+                    phantom_edge = [P.index(x) + 1 for x in self._phantom_edge]
+                    igc.add_edge(phantom_edge)
+                    igc.make_minimal_isomorph()
+            
+                    ghash = hash(igc)
+                    if not ghash in sharp_graph_counts:
+                        sharp_graphs.append(igc)
+                        sharp_graph_counts[ghash] = Integer(0)
         
         return [(g, sharp_graph_counts[hash(g)] / total) for g in sharp_graphs]
 
@@ -374,27 +377,26 @@ class BlowupConstruction(Construction):
 
         sys.stdout.write("Found %d orbits.\n" % len(orb_reps))
 
-        import multiprocessing as mp
-        p = mp.Pool()
-        arguments = [(P, self._graph, factor) for P, factor in orb_reps.items()]
-        for ig, ghash, factor in p.starmap(symm_subgraph_densities_mp, arguments):
-            if ghash in sharp_graph_counts:
-                sharp_graph_counts[ghash] += factor
-            else:
-                sharp_graphs.append(ig)
-                sharp_graph_counts[ghash] = factor
-        
-        # for P, factor in orb_reps.items():
-        # 
-        #     ig = self._graph.degenerate_induced_subgraph(P)
-        #     ig.make_minimal_isomorph()
-        # 
-        #     ghash = hash(ig)
-        #     if ghash in sharp_graph_counts:
-        #         sharp_graph_counts[ghash] += factor
-        #     else:
-        #         sharp_graphs.append(ig)
-        #         sharp_graph_counts[ghash] = factor
+        if self.pool is not None:
+            arguments = [(P, self._graph, factor) for P, factor in orb_reps.items()]
+            for ig, ghash, factor in p.starmap(symm_subgraph_densities_mp, arguments):
+                if ghash in sharp_graph_counts:
+                    sharp_graph_counts[ghash] += factor
+                else:
+                    sharp_graphs.append(ig)
+                    sharp_graph_counts[ghash] = factor
+        else:
+            for P, factor in orb_reps.items():
+            
+                ig = self._graph.degenerate_induced_subgraph(P)
+                ig.make_minimal_isomorph()
+            
+                ghash = hash(ig)
+                if ghash in sharp_graph_counts:
+                    sharp_graph_counts[ghash] += factor
+                else:
+                    sharp_graphs.append(ig)
+                    sharp_graph_counts[ghash] = factor
 
         return [(g, sharp_graph_counts[hash(g)] / Integer(total)) for g in sharp_graphs]
 
