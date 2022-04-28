@@ -48,7 +48,7 @@ def zero_eigenvectors_mp(tg, flags, tv, graph, cn, k, s, weights):
     it = graph.degenerate_induced_subgraph(tv)
 
     if not it.is_labelled_isomorphic(tg):
-        return NOne
+        return None
 
     total = Integer(0)
     row = [0] * len(flags)
