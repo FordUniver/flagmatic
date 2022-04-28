@@ -204,7 +204,7 @@ class Problem(SageObject):
 
         self.pool = None
         if use_mp:
-            import multiuprocessing as mp
+            import multiprocessing as mp
             self.pool = mp.Pool()
         
         self._flagmatic_version = "2.0"
