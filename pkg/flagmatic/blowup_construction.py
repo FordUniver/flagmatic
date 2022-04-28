@@ -243,7 +243,7 @@ class BlowupConstruction(Construction):
         if self.pool is not None:
             assert not hasattr(self, "_phantom_edge")
             arguments = [(tg, flags, tv, self._graph, cn, k, s, self._weights) for tv in Tuples(range(1, cn + 1), s)]
-            for row self.pool.starmap(zero_eigenvectors_mp, arguments):
+            for row in self.pool.starmap(zero_eigenvectors_mp, arguments):
                 if row is not None: rows.append(row)
             
         else:
