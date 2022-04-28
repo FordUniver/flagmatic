@@ -45,7 +45,6 @@ from sage.modules.misc import gram_schmidt
 from sage.misc.misc import SAGE_TMP
 #from sage.combinat.all import Permutations, Combinations, Tuples
 from sage.matrix.constructor import ones_matrix, vector
-from copy import copy
 
 from .hypergraph_flag import make_graph_block, print_graph_block
 from .flag import *
@@ -55,6 +54,11 @@ from .oriented_graph_flag import *
 from .multigraph_flag import *
 from .construction import *
 from .blowup_construction import *
+
+from copy import copy, deepcopy
+import math
+
+from tqdm import tqdm
 
 # pexpect in Sage 4.8 has a bug, which prevents it using commands with full paths.
 # So for now, CSDP has to be in a directory in $PATH.
@@ -166,7 +170,7 @@ class Problem(SageObject):
     def __init__(self, flag_cls, order=None, forbid_induced=None, forbid=None,
                  forbid_homomorphic_images=False, density=None, minimize=False,
                  type_orders=None, types=None, max_flags=None, compute_products=True,
-                 mode="plain"):
+                 mode="plain", use_mp=True):
         
         r"""
         Creates a new Problem object. Generally it is not necessary to call this method
@@ -198,6 +202,11 @@ class Problem(SageObject):
         - mode: plain/optimization/feasibility (see Flagmatic documentation)
         """
 
+        self.pool = None
+        if use_mp:
+            import multiuprocessing as mp
+            self.pool = mp.Pool()
+        
         self._flagmatic_version = "2.0"
 
         if issubclass(flag_cls, Flag):
@@ -478,7 +487,7 @@ class Problem(SageObject):
         sys.stdout.write("Generating graphs...\n")
         self._graphs = self._flag_cls.generate_graphs(n, forbidden_edge_numbers=self._forbidden_edge_numbers,
                                                       forbidden_graphs=self._forbidden_graphs, forbidden_induced_graphs=self._forbidden_induced_graphs,
-                                                      use_mp=True, show_progress=True)
+                                                      use_mp=self.use_mp, show_progress=True)
         sys.stdout.write("Generated %d graphs.\n" % len(self._graphs))
 
         for g in self._graphs:    # Make all the graphs immutable
@@ -511,16 +520,16 @@ class Problem(SageObject):
 
             sys.stdout.write("Generated %d types of order %d, " % (len(these_types), s))
 
-            import multiprocessing as mp
-            arguments = [(self._flag_cls, m, tg, self._forbidden_edge_numbers, self._forbidden_graphs, self._forbidden_induced_graphs) for tg in these_types]
-            p = mp.Pool()
-            these_flags = p.starmap(generate_flags_mp, arguments)
-            p.close()
-            # these_flags = []
-            # for tg in these_types:
-            #     these_flags.append(self._flag_cls.generate_flags(m, tg, forbidden_edge_numbers=self._forbidden_edge_numbers,
-            #                                                      forbidden_graphs=self._forbidden_graphs,
-            #                                                      forbidden_induced_graphs=self._forbidden_induced_graphs))
+            if self.pool is not None:
+                arguments = [(self._flag_cls, m, tg, self._forbidden_edge_numbers, self._forbidden_graphs, self._forbidden_induced_graphs) for tg in these_types]
+                these_flags = self.pool.starmap(generate_flags_mp, arguments)
+                
+            else:
+                these_flags = []
+                for tg in these_types:
+                    these_flags.append(self._flag_cls.generate_flags(m, tg, forbidden_edge_numbers=self._forbidden_edge_numbers,
+                                                                     forbidden_graphs=self._forbidden_graphs,
+                                                                     forbidden_induced_graphs=self._forbidden_induced_graphs))
             sys.stdout.write("with %s flags of order %d.\n" % (sum([len(L) for L in these_flags]), m))
 
             self._types.extend(these_types)
@@ -619,26 +628,26 @@ class Problem(SageObject):
         
     def _compute_densities(self):
 
-        import multiprocessing as mp
-        p = mp.Pool()
         self._densities = []
         for dg in self._density_graphs:
-            arguments = [(g, dg) for g in self._graphs]
-            density_values = p.starmap(compute_densities_mp, arguments)
-            # density_values = []
-            # for g in self._graphs:
-            #     dv = 0
-            #     for h, coeff in dg:
-            #         if h.n == g.n:
-            #             # comparison will be fast, as both g and h should have
-            #             # _certified_minimal_isomorph set to True
-            #             if g == h:
-            #                 dv += coeff
-            #         else:
-            #             dv += coeff * g.subgraph_density(h)
-            #     density_values.append(dv)
+            if self.pool is not None:
+                arguments = [(g, dg) for g in self._graphs]
+                density_values = self.pool.starmap(compute_densities_mp, arguments)
+            else:
+                density_values = []
+                for g in self._graphs:
+                    dv = 0
+                    for h, coeff in dg:
+                        if h.n == g.n:
+                            # comparison will be fast, as both g and h should have
+                            # _certified_minimal_isomorph set to True
+                            if g == h:
+                                dv += coeff
+                        else:
+                            dv += coeff * g.subgraph_density(h)
+                    density_values.append(dv)
             self._densities.append(density_values)
-        p.close()
+        
             
     def set_density(self, *args):
 
@@ -1259,25 +1268,24 @@ class Problem(SageObject):
         self._target_bound = max(target_densities)
 
         sys.stdout.write("Density of construction is %s.\n" % self._target_bound)
-
-        from tqdm import tqdm
-        import multiprocessing as mp
-        arguments = [(construction, self._types[ti], self._flags[ti]) for ti in range(len(self._types))]
-        p = mp.Pool()
-        self._zero_eigenvectors = p.starmap(zero_eigenvectors_mp, tqdm(arguments))
-        p.close()
         
-        for ti in range(len(self._types)):
-            sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (self._zero_eigenvectors[ti].nrows(), ti))
-                
-        # self._zero_eigenvectors = []
-        # 
-        # for ti in range(len(self._types)):
-        # 
-        #     self._zero_eigenvectors.append(construction.zero_eigenvectors(self._types[ti], self._flags[ti]))
-        # 
-        #     sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (
-        #         self._zero_eigenvectors[ti].nrows(), ti))
+        if self.pool is not None:
+            arguments = [(construction, self._types[ti], self._flags[ti]) for ti in range(len(self._types))]
+            self._zero_eigenvectors = self.pool.starmap(zero_eigenvectors_mp, tqdm(arguments))
+            
+
+            for ti in range(len(self._types)):
+                sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (self._zero_eigenvectors[ti].nrows(), ti))
+        
+        else:
+            self._zero_eigenvectors = []
+            
+            for ti in range(len(self._types)):
+            
+                self._zero_eigenvectors.append(construction.zero_eigenvectors(self._types[ti], self._flags[ti]))
+            
+                sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (
+                    self._zero_eigenvectors[ti].nrows(), ti))
         
         for ti in range(len(self._types)):
             self._zero_eigenvectors[ti].set_immutable()
@@ -1512,52 +1520,35 @@ class Problem(SageObject):
         #sys.stdout.write("Computing products")
         print("Computing products...")
 
-        from tqdm import tqdm
-        import multiprocessing as mp
-        from copy import deepcopy
-        import math
+        if self.pool is not None:
+
+            # print("Applying pool to "+str(num_types)+" types in parallel")
+
+            arguments = []
+            for ti in range(num_types):
+                arguments.append( (self._types[ti], self._flags[ti], self._n, self._flag_cls, self._graphs) )
+
+            # print("Using "+str(mp.cpu_count())+" cores")
+
+            for rarray in self.pool.starmap(process_products_mp, tqdm(arguments)):
+                self._product_densities_arrays.append(rarray)
+            
         
-        # print("Applying pool to "+str(num_types)+" types in parallel")
-        
-        arguments = []
-        for ti in range(num_types):
-            arguments.append( (self._types[ti], self._flags[ti], self._n, self._flag_cls, self._graphs) )
-        
-        # print("Using "+str(mp.cpu_count())+" cores")
-        
-        p = mp.Pool()
-        for rarray in p.starmap(process_products_mp, tqdm(arguments)):
-            self._product_densities_arrays.append(rarray)
-        p.close()
-        
-        
-        # for ti in tqdm(range(num_types)):
-        #     
-        #     tg = self._types[ti]
-        #     s = tg.n
-        #     m = (self._n + s) / 2
-        # 
-        #     flags_block = make_graph_block(self._flags[ti], m)
-        #     
-        #     rarray = self._flag_cls.flag_products(graph_block, tg, flags_block, None)
-        #     self._product_densities_arrays.append(rarr
-        
-        # from tqdm import tqdm
-        # 
-        # for ti in tqdm(range(num_types)):
-        # 
-        #     tg = self._types[ti]
-        #     s = tg.n
-        #     m = (self._n + s) / 2
-        # 
-        #     flags_block = make_graph_block(self._flags[ti], m)
-        #     rarray = self._flag_cls.flag_products(graph_block, tg, flags_block, None)
-        #     self._product_densities_arrays.append(rarray)
-        # 
-        #     #sys.stdout.write(".")
-        #     #sys.stdout.flush()
-        # 
-        # #sys.stdout.write("\n")
+        else:
+            for ti in tqdm(range(num_types)):
+            
+                tg = self._types[ti]
+                s = tg.n
+                m = (self._n + s) / 2
+            
+                flags_block = make_graph_block(self._flags[ti], m)
+                rarray = self._flag_cls.flag_products(graph_block, tg, flags_block, None)
+                self._product_densities_arrays.append(rarray)
+            
+                #sys.stdout.write(".")
+                #sys.stdout.flush()
+            
+            #sys.stdout.write("\n")
 
     def _set_block_matrix_structure(self):
 
