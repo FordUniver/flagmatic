@@ -279,7 +279,7 @@ class BlowupConstruction(Construction):
         gap.eval("g := Group(%s);" % gen_str)
         if len(prefix) > 0:
             gap.eval("g := Stabilizer(g, %s, OnTuples);" % list(set(prefix)))
-            
+
         S = []
         for i in range(1, k - s + 1):
             S.extend([tuple(sorted(list(x))) for x in Subsets(self._graph.n, i)])
@@ -288,22 +288,18 @@ class BlowupConstruction(Construction):
 
         #sys.stdout.write("Calculating orbits")
 
-        total_len = len(S)
-        with tqdm(total=total_len) as pbar:
-            while len(S) > 0:
+        while len(S) > 0:
 
-                rep = list(S[0])
+            rep = list(S[0])
 
-                o = gap.new("Orbit(g, %s, OnSets);" % (rep,)).sage()
-                o = list(set([tuple(sorted(t)) for t in o]))
-                ot = o[0]
-                set_orb_reps[ot] = len(o)
-                for t in o:
-                    S.remove(t)
-                #sys.stdout.write(".")
-                #sys.stdout.flush()
-                
-                pbar.update(total_len - len(S))
+            o = gap.new("Orbit(g, %s, OnSets);" % (rep,)).sage()
+            o = list(set([tuple(sorted(t)) for t in o]))
+            ot = o[0]
+            set_orb_reps[ot] = len(o)
+            for t in o:
+                S.remove(t)
+            #sys.stdout.write(".")
+            #sys.stdout.flush()
 
         #sys.stdout.write("\n")
 
