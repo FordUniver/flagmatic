@@ -198,6 +198,8 @@ class BlowupConstruction(Construction):
         if self._use_symmetry:
             return self.symm_zero_eigenvectors(tg, flags)
 
+        # TODO: mp option
+        
         cn = self._graph.n
         s = tg.n
         k = flags[0].n  # assume all flags the same order
@@ -280,8 +282,6 @@ class BlowupConstruction(Construction):
 
         gen_str = ",".join("(" + "".join(str(cy) for cy in cys) + ")" for cys in gens)
         
-        print("g := Group(%s);" % gen_str)
-        
         gap.eval("g := Group(%s);" % gen_str)
         if len(prefix) > 0:
             gap.eval("g := Stabilizer(g, %s, OnTuples);" % list(set(prefix)))
@@ -333,6 +333,8 @@ class BlowupConstruction(Construction):
                     orb_reps[t] = weight
                     total += weight
 
+        # TODO: store them for later use!!!
+                    
         return total, orb_reps
 
     def symm_zero_eigenvectors(self, tg, flags, flag_basis=None):
@@ -344,6 +346,8 @@ class BlowupConstruction(Construction):
 
         t_total, t_orb_reps = self.tuple_orbit_reps(s)
 
+        # TODO: mp option
+        
         for t_rep, t_factor in t_orb_reps.items():
 
             for tp in Permutations(t_rep):

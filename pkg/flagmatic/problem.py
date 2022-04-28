@@ -1268,24 +1268,15 @@ class Problem(SageObject):
         self._target_bound = max(target_densities)
 
         sys.stdout.write("Density of construction is %s.\n" % self._target_bound)
-        
-        if self.pool is not None:
-            arguments = [(construction, self._types[ti], self._flags[ti]) for ti in range(len(self._types))]
-            self._zero_eigenvectors = self.pool.starmap(zero_eigenvectors_mp, tqdm(arguments))
-            
 
-            for ti in range(len(self._types)):
-                sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (self._zero_eigenvectors[ti].nrows(), ti))
-        
-        else:
-            self._zero_eigenvectors = []
-            
-            for ti in range(len(self._types)):
-            
-                self._zero_eigenvectors.append(construction.zero_eigenvectors(self._types[ti], self._flags[ti]))
-            
-                sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (
-                    self._zero_eigenvectors[ti].nrows(), ti))
+        self._zero_eigenvectors = []
+
+        for ti in range(len(self._types)):
+
+            self._zero_eigenvectors.append(construction.zero_eigenvectors(self._types[ti], self._flags[ti]))
+
+            sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (
+                self._zero_eigenvectors[ti].nrows(), ti))
         
         for ti in range(len(self._types)):
             self._zero_eigenvectors[ti].set_immutable()
