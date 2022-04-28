@@ -1705,6 +1705,9 @@ class Problem(SageObject):
                 'fastmode': 0
             }
             
+        elif settings == "default":
+            settings = {}
+            
         self._csdp_settings_filename = os.path.join(str(SAGE_TMP), "param.csdp")
         
         if os.path.exists(self._csdp_settings_filename):
