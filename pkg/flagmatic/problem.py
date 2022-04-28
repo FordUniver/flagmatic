@@ -2123,7 +2123,7 @@ class Problem(SageObject):
         # must be negated.
         obj_value_factor = 1.0 if self._minimize else -1.0
 
-        child = pexpect.spawn(cmd, timeout=2**40)
+        child = pexpect.spawnu(cmd, timeout=2**40)
         obj_val = None
         self._sdp_solver_output = ""
         sys.stdout.write("Reading output file...\n")
@@ -2143,15 +2143,14 @@ class Problem(SageObject):
                     sys.stdout.write(line)
 
                 if "Primal objective value:" in line:  # CSDP
-                    print(f"Updating objective value to {line.split()[-1]}")
                     obj_val = self._approximate_field(line.split()[-1]) * obj_value_factor
                 elif "objValPrimal" in line:  # SDPA
                     obj_val = self._approximate_field(line.split()[-1]) * obj_value_factor
                 elif "DSDP Solution" in line:  # DSDP: seems to print absolute value
                     obj_val = self._approximate_field(line.split()[-1])
 
-            except OverflowError:
-                continue
+            #except OverflowError:
+            #    continue
 
             except pexpect.EOF:
                 break
