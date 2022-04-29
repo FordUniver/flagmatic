@@ -1694,7 +1694,7 @@ class Problem(SageObject):
             sys.stdout.write("Deleting existing CSDP settings file...\n")
             os.remove(self._csdp_settings_filename)
         
-        elif settings == "default":
+        if settings == "default":
             return 
         
         sys.stdout.write("Writing CSDP settings file...\n")
