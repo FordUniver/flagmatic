@@ -2131,8 +2131,8 @@ class Problem(SageObject):
                 elif "DSDP Solution" in line:  # DSDP: seems to print absolute value
                     obj_val = self._approximate_field(line.split()[-1])
 
-            #except OverflowError:
-            #    continue
+            except OverflowError:
+                continue
 
             except pexpect.EOF:
                 break
