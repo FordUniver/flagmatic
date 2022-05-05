@@ -165,13 +165,6 @@ def compute_densities_mp(g, dg):
     return dv
 
 
-def diagonalize_mp(exact_Qdash_matrix, inverse_flag_base):
-    R, M = LDLdecomposition(exact_Qdash_matrix)
-    if inverse_flag_base is not None:
-        R = inverse_flag_base * R
-    return R, M
-    
-
 def round_mp(sdp_Qdash_matrix, q_size, field, meet_target_bound, denominator):
 
     def rationalize(f):
@@ -212,8 +205,41 @@ def round_mp(sdp_Qdash_matrix, q_size, field, meet_target_bound, denominator):
 
     return M, D, L
 
+
+def construct_r_mp(ti, flag, num_sharps, product_density, sharp_graphs, inverse_flag_base):
+    Ds = [matrix(QQ, len(flag), len(flag))
+        for si in range(num_sharps)]
+
+    for row in product_density:
+        gi = row[0]
+        if not gi in sharp_graphs:
+            continue
+        si = sharp_graphs.index(gi)
+        j = row[1]
+        k = row[2]
+        value = Integer(row[3]) / Integer(row[4])
+        Ds[si][j, k] = value
+        Ds[si][k, j] = value
+
+    if inverse_flag_base is not None:
+        B = inverse_flag_base
+        for si in range(num_sharps):
+            Ds[si] = B.T * Ds[si] * B
+    
+    return ti, Ds
+
+
+def diagonalize_mp(exact_Qdash_matrix, inverse_flag_base):
+    R, M = LDLdecomposition(exact_Qdash_matrix)
+    if inverse_flag_base is not None:
+        R = inverse_flag_base * R
+    return R, M
+
+
 def verify_mp(exact_r_matrix, exact_diagonal_matrix, exact_Q_matrix):
     assert exact_Q_matrix == exact_r_matrix * exact_diagonal_matrix * exact_r_matrix.T
+    
+    
 
 
 class Problem(SageObject):
@@ -2666,45 +2692,60 @@ class Problem(SageObject):
 
             R = matrix(self._field, num_sharps, num_triples, sparse=True)
 
-            sys.stdout.write("Constructing R matrix")
-
-            # TODO: only use triples that correspond to middle blocks.
-
-            for ti in self._active_types:
-
-                Ds = [matrix(QQ, len(self._flags[ti]), len(self._flags[ti]))
-                      for si in range(num_sharps)]
-
-                for row in self._product_densities_arrays[ti]:
-                    gi = row[0]
-                    if not gi in self._sharp_graphs:
-                        continue
-                    si = self._sharp_graphs.index(gi)
-                    j = row[1]
-                    k = row[2]
-                    value = Integer(row[3]) / Integer(row[4])
-                    Ds[si][j, k] = value
-                    Ds[si][k, j] = value
-
-                if self.state("transform_solution") == "yes":
-                    B = self._inverse_flag_bases[ti]
+            if self.pool is not None:
+                sys.stdout.write("Constructing R matrix ...\n")
+                arguments = [(ti, self._flags[ti], num_sharps, self._product_densities_arrays[ti], self._sharp_graphs, self._inverse_flag_bases[ti] if self.state("transform_solution") == "yes" else None) for ti in self._active_types]
+                for ti, Ds in self.pool.starmap(construct_r_mp, tqdm(arguments)):
                     for si in range(num_sharps):
-                        Ds[si] = B.T * Ds[si] * B
+                        for j in range(q_sizes[ti]):
+                            for k in range(j, q_sizes[ti]):
+                                trip = (ti, j, k)
+                                value = Ds[si][j, k]
+                                if j != k:
+                                    value *= 2
+                                if self._minimize:
+                                    value *= -1
+                                R[si, triple_to_index[trip]] = value
+            else:
+                sys.stdout.write("Constructing R matrix")
 
-                for si in range(num_sharps):
-                    for j in range(q_sizes[ti]):
-                        for k in range(j, q_sizes[ti]):
-                            trip = (ti, j, k)
-                            value = Ds[si][j, k]
-                            if j != k:
-                                value *= 2
-                            if self._minimize:
-                                value *= -1
-                            R[si, triple_to_index[trip]] = value
+                # TODO: only use triples that correspond to middle blocks.
 
-                sys.stdout.write(".")
-                sys.stdout.flush()
-            sys.stdout.write("\n")
+                for ti in self._active_types:
+
+                    Ds = [matrix(QQ, len(self._flags[ti]), len(self._flags[ti]))
+                        for si in range(num_sharps)]
+
+                    for row in self._product_densities_arrays[ti]:
+                        gi = row[0]
+                        if not gi in self._sharp_graphs:
+                            continue
+                        si = self._sharp_graphs.index(gi)
+                        j = row[1]
+                        k = row[2]
+                        value = Integer(row[3]) / Integer(row[4])
+                        Ds[si][j, k] = value
+                        Ds[si][k, j] = value
+
+                    if self.state("transform_solution") == "yes":
+                        B = self._inverse_flag_bases[ti]
+                        for si in range(num_sharps):
+                            Ds[si] = B.T * Ds[si] * B
+
+                    for si in range(num_sharps):
+                        for j in range(q_sizes[ti]):
+                            for k in range(j, q_sizes[ti]):
+                                trip = (ti, j, k)
+                                value = Ds[si][j, k]
+                                if j != k:
+                                    value *= 2
+                                if self._minimize:
+                                    value *= -1
+                                R[si, triple_to_index[trip]] = value
+
+                    sys.stdout.write(".")
+                    sys.stdout.flush()
+                sys.stdout.write("\n")
 
             density_cols_to_use = []
             DR = matrix(self._field, num_sharps, 0)  # sparsity harms performance too much here
