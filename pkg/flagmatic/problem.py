@@ -2474,7 +2474,7 @@ class Problem(SageObject):
 
     def make_exact(self, denominator=1024, meet_target_bound=True,
                    protect=None, use_densities=True, use_blocks=True, rank=None, show_changes=False,
-                   check_exact_bound=True, diagonalize=True):
+                   check_exact_bound=True, diagonalize=True, verify=True):
         r"""
         Makes an exact bound for the problem using the approximate floating point bound
         found by the SDP solver.
@@ -2780,9 +2780,9 @@ class Problem(SageObject):
             self._exact_Qdash_matrices[ti].set_immutable()
 
         if check_exact_bound:
-            self.check_exact_bound()
+            self.check_exact_bound(diagonalize=diagonalize, verify=verify)
 
-    def check_exact_bound(self, diagonalize=True):
+    def check_exact_bound(self, diagonalize=True, verify=True):
         r"""
         Usually called by ``make_exact``. If the solution was transformed, then computes
         the Q matrices from the Q' matrices. If the solution was adjusted to meet the
@@ -2899,7 +2899,7 @@ class Problem(SageObject):
                 sys.stdout.write("%s : graph %d (%s)\n" % (bounds[gi], gi, self._graphs[gi]))
 
         if diagonalize:
-            self.diagonalize()
+            self.diagonalize(verify=verify)
             
     def diagonalize(self, verify=True):
         r"""
