@@ -239,7 +239,10 @@ def diagonalize_mp(exact_Qdash_matrix, inverse_flag_base):
 def verify_mp(exact_r_matrix, exact_diagonal_matrix, exact_Q_matrix):
     assert exact_Q_matrix == exact_r_matrix * exact_diagonal_matrix * exact_r_matrix.T
     
-    
+
+def eigvals_mp(ti, exact_Qdash_matrix):
+    eigvals = sorted(numpy.linalg.eigvalsh(exact_Qdash_matrix))
+    return ti, eigvals[0]
 
 
 class Problem(SageObject):
@@ -2897,13 +2900,21 @@ class Problem(SageObject):
         if self.state("meet_target_bound") == "yes":
             negative_types = []
             very_small_types = []
-            for ti in self._active_types:
-                if self._exact_Qdash_matrices[ti].nrows() > 0:
-                    eigvals = sorted(numpy.linalg.eigvalsh(self._exact_Qdash_matrices[ti]))
-                    if eigvals[0] < 0.0:
-                        negative_types.append(ti)
-                    elif eigvals[0] < 1e-6:
-                        very_small_types.append(ti)
+
+            if self.pool is not None:
+                arguments = [(ti, self._exact_Qdash_matrices[ti]) for ti in self._active_types if self._exact_Qdash_matrices[ti].nrows() > 0]
+                for ti, eigval in self.starmap(eigvals_mp, arguments):
+                    if eigval < 0.0: negative_types.append(ti)
+                    elif eigval < 1e-6: very_small_types.append(ti)
+
+            else:
+                for ti in self._active_types:
+                    if self._exact_Qdash_matrices[ti].nrows() > 0:
+                        eigvals = sorted(numpy.linalg.eigvalsh(self._exact_Qdash_matrices[ti]))
+                        if eigvals[0] < 0.0:
+                            negative_types.append(ti)
+                        elif eigvals[0] < 1e-6:
+                            very_small_types.append(ti)
 
             if len(negative_types) > 0:
                 sys.stdout.write("Warning! Types %s have negative eigenvalues, so the bound is not valid.\n" % negative_types)
