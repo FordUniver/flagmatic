@@ -172,6 +172,46 @@ def diagonalize_mp(exact_Qdash_matrix, inverse_flag_base):
     return R, M
     
 
+def round_mp(sdp_Qdash_matrix, q_size, field, meet_target_bound, denominator):
+
+    def rationalize(f):
+        return Integer(round(int(f * denominator))) / denominator
+        
+    if meet_target_bound:
+        D, L = None, None
+
+        M = matrix(QQ, q_size, q_size, sparse=True)
+        for j in range(q_size):
+            for k in range(j, q_size):
+                value = rationalize(sdp_Qdash_matrix[j, k])
+                if value != 0:
+                    M[j, k] = value
+                    M[k, j] = value
+    else:
+        try:
+            LF = numpy.linalg.cholesky(sdp_Qdash_matrix)
+            # TODO: Consider using this:
+            # LF = self._sdp_Qdash_matrices[ti].cholesky_decomposition()
+        except numpy.linalg.linalg.LinAlgError:
+        # except ValueError:
+            sys.stdout.write("Could not compute Cholesky decomposition for type %d.\n" % ti)
+            return
+        L = matrix(QQ, q_size, q_size, sparse=True)
+        for j in range(q_size):
+            for k in range(j + 1):  # only lower triangle
+                L[j, k] = rationalize(LF[j, k])
+        L.set_immutable()
+        M = L * L.T
+
+        D = identity_matrix(QQ, q_size, sparse=True)
+        D.set_immutable()
+    
+    row_div = sdp_Qdash_matrix.subdivisions()[0]
+    M.subdivide(row_div, row_div)
+    M = matrix(field, M)
+
+    return M, D, L
+
 def verify_mp(exact_r_matrix, exact_diagonal_matrix, exact_Q_matrix):
     assert exact_Q_matrix == exact_r_matrix * exact_diagonal_matrix * exact_r_matrix.T
 
@@ -2544,54 +2584,63 @@ class Problem(SageObject):
 
         q_sizes = [self._sdp_Qdash_matrices[ti].nrows() for ti in range(num_types)]
 
-        def rationalize(f):
-            return Integer(round(int(f * denominator))) / denominator
-
-        sys.stdout.write("Rounding matrices")
 
         self._exact_Qdash_matrices = []
 
-        for ti in range(num_types):
+        if self.pool is not None:
+            sys.stdout.write("Rounding matrices ...\n")
+            arguments = [(self._sdp_Qdash_matrices[ti], q_sizes[ti], self._field, meet_target_bound, denominator) for ti in range(num_types)]
+            for M, D, L in self.pool.starmap(round_mp, tqdm(arguments)):
+                self._exact_Qdash_matrices.append(M)
+                if D is not None: self._exact_diagonal_matrices.append(D)
+                if L is not None: self._exact_r_matrices.append(L)
 
-            if meet_target_bound:
+        else:
+            def rationalize(f):
+                return Integer(round(int(f * denominator))) / denominator
+                
+            sys.stdout.write("Rounding matrices")
+            for ti in range(num_types):
 
-                M = matrix(QQ, q_sizes[ti], q_sizes[ti], sparse=True)
-                for j in range(q_sizes[ti]):
-                    for k in range(j, q_sizes[ti]):
-                        value = rationalize(self._sdp_Qdash_matrices[ti][j, k])
-                        if value != 0:
-                            M[j, k] = value
-                            M[k, j] = value
+                if meet_target_bound:
 
-            else:
+                    M = matrix(QQ, q_sizes[ti], q_sizes[ti], sparse=True)
+                    for j in range(q_sizes[ti]):
+                        for k in range(j, q_sizes[ti]):
+                            value = rationalize(self._sdp_Qdash_matrices[ti][j, k])
+                            if value != 0:
+                                M[j, k] = value
+                                M[k, j] = value
 
-                try:
-                    LF = numpy.linalg.cholesky(self._sdp_Qdash_matrices[ti])
-                    # TODO: Consider using this:
-                    # LF = self._sdp_Qdash_matrices[ti].cholesky_decomposition()
-                except numpy.linalg.linalg.LinAlgError:
-                # except ValueError:
-                    sys.stdout.write("Could not compute Cholesky decomposition for type %d.\n" % ti)
-                    return
-                L = matrix(QQ, q_sizes[ti], q_sizes[ti], sparse=True)
-                for j in range(q_sizes[ti]):
-                    for k in range(j + 1):  # only lower triangle
-                        L[j, k] = rationalize(LF[j, k])
-                L.set_immutable()
-                M = L * L.T
-                if not meet_target_bound:
-                    D = identity_matrix(QQ, q_sizes[ti], sparse=True)
-                    D.set_immutable()
-                    self._exact_diagonal_matrices.append(D)
-                    self._exact_r_matrices.append(L)
-            
-            row_div = self._sdp_Qdash_matrices[ti].subdivisions()[0]
-            M.subdivide(row_div, row_div)
-            self._exact_Qdash_matrices.append(matrix(self._field, M))
-            sys.stdout.write(".")
-            sys.stdout.flush()
+                else:
 
-        sys.stdout.write("\n")
+                    try:
+                        LF = numpy.linalg.cholesky(self._sdp_Qdash_matrices[ti])
+                        # TODO: Consider using this:
+                        # LF = self._sdp_Qdash_matrices[ti].cholesky_decomposition()
+                    except numpy.linalg.linalg.LinAlgError:
+                    # except ValueError:
+                        sys.stdout.write("Could not compute Cholesky decomposition for type %d.\n" % ti)
+                        return
+                    L = matrix(QQ, q_sizes[ti], q_sizes[ti], sparse=True)
+                    for j in range(q_sizes[ti]):
+                        for k in range(j + 1):  # only lower triangle
+                            L[j, k] = rationalize(LF[j, k])
+                    L.set_immutable()
+                    M = L * L.T
+                    if not meet_target_bound:
+                        D = identity_matrix(QQ, q_sizes[ti], sparse=True)
+                        D.set_immutable()
+                        self._exact_diagonal_matrices.append(D)
+                        self._exact_r_matrices.append(L)
+                
+                row_div = self._sdp_Qdash_matrices[ti].subdivisions()[0]
+                M.subdivide(row_div, row_div)
+                self._exact_Qdash_matrices.append(matrix(self._field, M))
+                sys.stdout.write(".")
+                sys.stdout.flush()
+
+            sys.stdout.write("\n")
 
         self._exact_density_coeffs = [rationalize(self._sdp_density_coeffs[di]) for di in range(num_densities)]
 
