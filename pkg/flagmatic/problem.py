@@ -2584,6 +2584,8 @@ class Problem(SageObject):
 
         q_sizes = [self._sdp_Qdash_matrices[ti].nrows() for ti in range(num_types)]
 
+        def rationalize(f):
+            return Integer(round(int(f * denominator))) / denominator
 
         self._exact_Qdash_matrices = []
 
@@ -2596,9 +2598,6 @@ class Problem(SageObject):
                 if L is not None: self._exact_r_matrices.append(L)
 
         else:
-            def rationalize(f):
-                return Integer(round(int(f * denominator))) / denominator
-                
             sys.stdout.write("Rounding matrices")
             for ti in range(num_types):
 
