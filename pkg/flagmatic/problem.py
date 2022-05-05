@@ -2903,7 +2903,7 @@ class Problem(SageObject):
 
             if self.pool is not None:
                 arguments = [(ti, self._exact_Qdash_matrices[ti]) for ti in self._active_types if self._exact_Qdash_matrices[ti].nrows() > 0]
-                for ti, eigval in self.starmap(eigvals_mp, arguments):
+                for ti, eigval in self.pool.starmap(eigvals_mp, arguments):
                     if eigval < 0.0: negative_types.append(ti)
                     elif eigval < 1e-6: very_small_types.append(ti)
 
