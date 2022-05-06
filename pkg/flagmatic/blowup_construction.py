@@ -198,11 +198,11 @@ class BlowupConstruction(Construction):
             if nauty_presort and not hasattr(self, "_phantom_edge"):
                 print(f"Nauty presort ...")
                 arguments = [(P, n, cn, self._weights, self._graph) for P in UnorderedTuples(range(1, cn + 1), n)]
-                hash_dict = {}
+                factor_dict, P_dict = {}, {}
                 for ghash, factor, P in self.pool.starmap(subgraph_densities_presort_mp, tqdm(arguments)):
-                    if ghash not in hash_dict.keys():
-                        hash_dict[ghash] = (P, factor)
-                    hash_dict[ghash][1] += factor
+                    if ghash not in P_dict.keys():
+                        P_dict[ghash] = P
+                    factor_dict[ghash] = factor_dict.get(ghash, 0) + factor
 
                 print(f"Flagmatic sort ...")
                 arguments = [(P, self._graph, factor) for P, factor in hash_dict.values()]
