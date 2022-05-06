@@ -78,6 +78,23 @@ def zero_eigenvectors_mp(tg, flags, tv, graph, cn, k, s, weights):
     
     return row
     
+def subgraph_densities_presort_mp(P, n, cn, weights, graph):
+    factor = factorial(n)
+    for i in range(1, cn + 1):
+        factor /= factorial(P.count(i))
+    if weights:
+        for v in P:
+            factor *= weights[v - 1]
+    ig = graph.degenerate_induced_subgraph(P)
+    ghash = ig.Graph().canonical_label().graph6_string()
+    return ghash, factor, P
+
+def subgraph_densities_hash_mp(P, graph, factor):
+    ig = graph.degenerate_induced_subgraph(P)
+    ig.make_minimal_isomorph()
+    ghash = hash(ig)
+    return ghash, ig, factor
+
 def subgraph_densities_mp(P, n, cn, weights, graph, phantom_edge):
     factor = factorial(n)
     for i in range(1, cn + 1):
@@ -164,7 +181,7 @@ class BlowupConstruction(Construction):
     def field(self):
         return self._field
 
-    def subgraph_densities(self, n):
+    def subgraph_densities(self, n, nauty_presort=True):
 
         if n < 0:
             raise ValueError
@@ -178,19 +195,39 @@ class BlowupConstruction(Construction):
         sharp_graphs = []
         
         if self.pool is not None:
-            arguments = [(P, n, cn, self._weights, self._graph, self._phantom_edge if hasattr(self, "_phantom_edge") else None) for P in UnorderedTuples(range(1, cn + 1), n)]
-            for ghash, ig, gchash, igc, factor, contains_phantom_edge in self.pool.starmap(subgraph_densities_mp, arguments):
-                if ghash in sharp_graph_counts:
-                    sharp_graph_counts[ghash] += factor
-                else:
-                    sharp_graphs.append(ig)
-                    sharp_graph_counts[ghash] = factor
-                total += factor
+            if nauty_presort and not hasattr(self, "_phantom_edge"):
+                print(f"Nauty presort ...")
+                arguments = [(P, n, cn, self._weights, self._graph) for P in UnorderedTuples(range(1, cn + 1), n)]
+                hash_dict = {}
+                for ghash, factor, P in self.pool.starmap(subgraph_densities_presort_mp, tqdm(arguments)):
+                    if ghash not in hash_dict.keys():
+                        hash_dict[ghash] = (P, factor)
+                    hash_dict[ghash][1] += factor
 
-                if contains_phantom_edge:
-                    if not gchash in sharp_graph_counts:
-                        sharp_graphs.append(igc)
-                        sharp_graph_counts[gchash] = Integer(0)
+                print(f"Flagmatic sort ...")
+                arguments = [(P, self._graph, factor) for P, factor in hash_dict.values()]
+                for ghash, ig, factor in self.pool.starmap(subgraph_densities_hash_mp, tqdm(arguments)):
+                    if ghash in sharp_graph_counts:
+                        sharp_graph_counts[ghash] += factor
+                    else:
+                        sharp_graphs.append(ig)
+                        sharp_graph_counts[ghash] = factor
+                    total += factor
+                
+            else:
+                arguments = [(P, n, cn, self._weights, self._graph, self._phantom_edge if hasattr(self, "_phantom_edge") else None) for P in UnorderedTuples(range(1, cn + 1), n)]
+                for ghash, ig, gchash, igc, factor, contains_phantom_edge in self.pool.starmap(subgraph_densities_mp, arguments):
+                    if ghash in sharp_graph_counts:
+                        sharp_graph_counts[ghash] += factor
+                    else:
+                        sharp_graphs.append(ig)
+                        sharp_graph_counts[ghash] = factor
+                    total += factor
+
+                    if contains_phantom_edge:
+                        if not gchash in sharp_graph_counts:
+                            sharp_graphs.append(igc)
+                            sharp_graph_counts[gchash] = Integer(0)
         else:
             for P in UnorderedTuples(range(1, cn + 1), n):
             
