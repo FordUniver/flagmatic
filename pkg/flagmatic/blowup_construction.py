@@ -205,7 +205,7 @@ class BlowupConstruction(Construction):
                     factor_dict[ghash] = factor_dict.get(ghash, 0) + factor
 
                 print(f"Flagmatic sort ...")
-                arguments = [(P, self._graph, factor) for P, factor in hash_dict.values()]
+                arguments = [(P_dict[ghash], self._graph, factor_dict[ghash]) for ghash in P_dict.keys()]
                 for ghash, ig, factor in self.pool.starmap(subgraph_densities_hash_mp, tqdm(arguments)):
                     if ghash in sharp_graph_counts:
                         sharp_graph_counts[ghash] += factor
