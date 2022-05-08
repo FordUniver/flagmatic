@@ -181,7 +181,7 @@ class BlowupConstruction(Construction):
     def field(self):
         return self._field
 
-    def subgraph_densities(self, n, nauty_presort=True):
+    def subgraph_densities(self, n, nauty_presort=False):
 
         if n < 0:
             raise ValueError

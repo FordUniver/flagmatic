@@ -99,3 +99,24 @@ cdef class GraphFlag (HypergraphFlag):
                 gens = sorted([tuple(sorted(tuple(sorted(cy)) for cy in gen)) for gen in trans_gens])
 
                 return gens
+
+        
+        # overwrite make_minimal_isomorph and is_labelled_isomorphic with nauty's methods
+        def make_minimal_isomorph(self):
+                self._require_mutable()
+
+                if self._certified_minimal_isomorph: return
+
+                new_edges = []
+                canonical_sage_graph = self.Graph().canonical_label()
+                for (v1, v2, _) in canonical_sage_graph.edges():
+                        new_edges.append((v1+1, v2+1))
+
+                for edge in self.edges: self.delete_edge(edge)
+                for edge in new_edges: self.add_edge(edge)
+
+                self._certified_minimal_isomorph = True
+
+
+        def is_labelled_isomorphic(self, GraphFlag other):
+                return self.Graph() == other.Graph()
