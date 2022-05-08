@@ -4181,6 +4181,14 @@ def GraphProblem(order=None, **kwargs):
     """
     return Problem(GraphFlag, order, **kwargs)
 
+def NautyGraphProblem(order=None, **kwargs):
+    r"""
+    Returns a Problem object, that will represent a Turán-type graph problem. For help
+    with Problem objects, enter
+
+    sage: help(Problem)
+    """
+    return Problem(NautyGraphFlag, order, **kwargs)
 
 def OrientedGraphProblem(order=None, **kwargs):
     r"""

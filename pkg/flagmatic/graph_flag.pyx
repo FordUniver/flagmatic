@@ -37,7 +37,7 @@ cdef class GraphFlag (HypergraphFlag):
 
 
         def __init__(self, representation=None):
-        
+
                 if type(representation) is Graph:
                         g = representation
                         super(GraphFlag, self).__init__(g.order(), r=2, oriented=False)
@@ -101,6 +101,9 @@ cdef class GraphFlag (HypergraphFlag):
                 return gens
 
         
+
+cdef class NautyGraphFlag (GraphFlag):
+        
         # overwrite make_minimal_isomorph and is_labelled_isomorphic with nauty's methods
         def make_minimal_isomorph(self):
                 self._require_mutable()
@@ -120,3 +123,4 @@ cdef class GraphFlag (HypergraphFlag):
 
         def is_labelled_isomorphic(self, GraphFlag other):
                 return self.Graph() == other.Graph()
+                

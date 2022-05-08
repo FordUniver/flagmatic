@@ -127,10 +127,12 @@ def symm_subgraph_densities_mp(P, graph, factor):
     
 class BlowupConstruction(Construction):
 
-    def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False, use_mp=True):
+    def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False, use_mp=True, nauty_presort=False):
 
         self.tuple_orbit_reps_dict = {}
-        
+
+        self.nauty_presort = nauty_presort
+
         self.pool = None
         if use_mp:
             import multiprocessing as mp
@@ -181,7 +183,7 @@ class BlowupConstruction(Construction):
     def field(self):
         return self._field
 
-    def subgraph_densities(self, n, nauty_presort=False):
+    def subgraph_densities(self, n):
 
         if n < 0:
             raise ValueError
@@ -195,7 +197,7 @@ class BlowupConstruction(Construction):
         sharp_graphs = []
         
         if self.pool is not None:
-            if nauty_presort and not hasattr(self, "_phantom_edge"):
+            if self.nauty_presort and not hasattr(self, "_phantom_edge"):
                 print(f"Nauty presort ...")
                 arguments = [(P, n, cn, self._weights, self._graph) for P in UnorderedTuples(range(1, cn + 1), n)]
                 factor_dict, P_dict = {}, {}
