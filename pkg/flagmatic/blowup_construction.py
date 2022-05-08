@@ -264,7 +264,7 @@ class BlowupConstruction(Construction):
         
         return [(g, sharp_graph_counts[hash(g)] / total) for g in sharp_graphs]
 
-    def zero_eigenvectors(self, tg, flags):
+    def zero_eigenvectors(self, tg, flags, use_mp=True):
 
         if self._use_symmetry:
             return self.symm_zero_eigenvectors(tg, flags)
@@ -277,7 +277,7 @@ class BlowupConstruction(Construction):
 
         rows = []
         
-        if self.pool is not None:
+        if self.pool is not None and use_mp:
             assert not hasattr(self, "_phantom_edge")
             arguments = [(tg, flags, tv, self._graph, cn, k, s, self._weights) for tv in Tuples(range(1, cn + 1), s)]
             for row in self.pool.starmap(zero_eigenvectors_mp, arguments):

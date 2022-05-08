@@ -150,8 +150,8 @@ def generate_flags_mp(flag_cls, m, tg, forbidden_edge_numbers, forbidden_graphs,
     return flag_cls.generate_flags(m, tg, forbidden_edge_numbers=forbidden_edge_numbers, forbidden_graphs=forbidden_graphs, forbidden_induced_graphs=forbidden_induced_graphs)
 
 
-def zero_eigenvectors_mp(construction, types, flags):
-    return construction.zero_eigenvectors(types, flags)
+def zero_eigenvectors_mp(construction, ti, type, flag):
+    return construction.zero_eigenvectors(type, flag, use_mp=False), ti
 
 
 def compute_densities_mp(g, dg):
@@ -1355,12 +1355,19 @@ class Problem(SageObject):
 
         self._zero_eigenvectors = []
 
-        for ti in range(len(self._types)):
+        if self.pool is not None:
+            arguments = [(construction, ti, self._types[ti], self._flags[ti]) for ti in range(len(self._types))]
+            for zero_eigenvectors, ti in self.pool.starmp(zero_eigenvectors_mp, arguments):
+                self._zero_eigenvectors.append(zero_eigenvectors)
+                sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (zero_eigenvectors.nrows(), ti))
 
-            self._zero_eigenvectors.append(construction.zero_eigenvectors(self._types[ti], self._flags[ti]))
+        else:
+            for ti in range(len(self._types)):
 
-            sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (
-                self._zero_eigenvectors[ti].nrows(), ti))
+                self._zero_eigenvectors.append(construction.zero_eigenvectors(self._types[ti], self._flags[ti]))
+
+                sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (
+                    self._zero_eigenvectors[ti].nrows(), ti))
         
         for ti in range(len(self._types)):
             self._zero_eigenvectors[ti].set_immutable()
