@@ -127,7 +127,7 @@ def symm_subgraph_densities_mp(P, graph, factor):
     
 class BlowupConstruction(Construction):
 
-    def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False, use_mp=True, nauty_presort=False):
+    def __init__(self, g, weights=None, field=None, phantom_edge=None, no_symmetry=False, use_mp=True, nauty_presort=True):
 
         self.tuple_orbit_reps_dict = {}
 
