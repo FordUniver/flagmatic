@@ -216,7 +216,7 @@ class BlowupConstruction(Construction):
                 
             else:
                 arguments = [(P, n, cn, self._weights, self._graph, self._phantom_edge if hasattr(self, "_phantom_edge") else None) for P in UnorderedTuples(range(1, cn + 1), n)]
-                for ghash, ig, gchash, igc, factor, contains_phantom_edge in self.pool.starmap(subgraph_densities_mp, arguments):
+                for ghash, ig, gchash, igc, factor, contains_phantom_edge in self.pool.starmap(subgraph_densities_mp, tqdm(arguments)):
                     if ghash in sharp_graph_counts:
                         sharp_graph_counts[ghash] += factor
                     else:
