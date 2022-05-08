@@ -1357,7 +1357,7 @@ class Problem(SageObject):
 
         if self.pool is not None:
             arguments = [(construction, ti, self._types[ti], self._flags[ti]) for ti in range(len(self._types))]
-            for zero_eigenvectors, ti in self.pool.starmp(zero_eigenvectors_mp, arguments):
+            for zero_eigenvectors, ti in self.pool.starmap(zero_eigenvectors_mp, arguments):
                 self._zero_eigenvectors.append(zero_eigenvectors)
                 sys.stdout.write("Found %d zero eigenvectors for type %d.\n" % (zero_eigenvectors.nrows(), ti))
 
