@@ -45,6 +45,7 @@ Possible options:
 --q-matrices                 Compute and display the Q matrices.
 --pair-densities             Compute and display the flag pair densities.
 --verify-bound               Verify the bound.
+--corank-one-types           Display all types whose Q matrix has co-rank 1.
 --sharp-graphs               Display the admissible graphs that are sharp.
 --flag-algebra-coefficients  Display each admissible graph's flag algebra coefficient.
 --stability                  Verify stability as well.
@@ -61,10 +62,9 @@ should_print_help = False
 
 try:
     opts, args = getopt.gnu_getopt(sys.argv[1:], "", ["help", "admissible-graphs",
-                                                      "flags", "r-matrices", "qdash-matrices",
-                                                      "pair-densities", "q-matrices", "verify-bound",
-                                                      "sharp-graphs", "flag-algebra-coefficients", "stability", "log"])
-
+                                                        "flags", "r-matrices", "qdash-matrices",
+                                                        "pair-densities", "q-matrices", "verify-bound", "corank-one-types",
+                                                        "sharp-graphs", "flag-algebra-coefficients", "stability", "log"])
 except getopt.GetoptError:
     should_print_help = True
     opts, args = ((), ())
@@ -91,6 +91,8 @@ for o, a in opts:
         action = "print q_matrices"
     elif o == "--verify-bound":
         action = "verify bound"
+    elif o == "--corank-one-types":
+        action = "print types of co-rank 1"
     elif o == "--sharp-graphs":
         action = "print sharp graphs"
     elif o == "--flag-algebra-coefficients":
@@ -101,7 +103,7 @@ for o, a in opts:
         action = "log"
         
 if should_print_help:
-    print HELP_TEXT
+    print(HELP_TEXT)
     sys.exit(0)
 
 certificate_filename = args[0]
@@ -409,6 +411,17 @@ if action == "print qdash_matrices":
     sys.exit(0)
 
 
+if action == "print types of co-rank 1":
+
+    print("\nVerifying which types have matrices of co-rank 1 associated with them:")
+    
+    for itau, Tgraph in enumerate(types):
+        Tgraph = Tgraph.minimal_isomorph()
+        itau = types.index(Tgraph)
+
+        if len(certificate["qdash_matrices"][itau]) == len(flags[itau])-1:
+            print(f"type {itau}: {Tgraph}")
+
 print("Computing Q matrices...")
 
 Qs = []
@@ -520,8 +533,7 @@ if action == "print pair densities":
 
             for key, d in pair_densities.items():
                 if key[:2] == (ti, i):
-                    print("      Flags {} and {} ({} and {}): {}".format(key[2] + 1, key[3] + 1,)
-                                                                         flags[ti][key[2]], flags[ti][key[3]], d)
+                    print(f"      Flags {key[2] + 1} and {key[3] + 1} ({flags[ti][key[2]]} and {flags[ti][key[3]]}): {d}")
     sys.exit(0)
 
 print("Computing bound...")
@@ -991,3 +1003,4 @@ if action == "verify stability":
 
         except ValueError:
             print("Couldn't open file bound.txt or read the bound.")
+
