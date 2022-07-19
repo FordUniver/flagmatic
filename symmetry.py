@@ -5,9 +5,15 @@ from collections import Counter
 from tqdm import tqdm
 
 # G = graphs.CompleteGraph(4)
+
 # G = Graph(r"LJ]lmZRnn]]\v[")
+# good_types = [r"D_K", r"DK{"]
+
 # G = graphs.ClebschGraph()
+
 G = graphs.SchlaefliGraph()
+good_types = [r"D?C", r"D@K", r"D_K", r"D@s", r"D@{", r"DBg", r"DBk", r"DIk", r"DB{", r"D`K", r"DK[", r"DK{", r"DJ[", r"DJk", r"DJ{", r"DLo", r"Dbk", r"DL{", r"DNw", r"DN{"]
+
 # G = graphs.SchlaefliGraph().complement()
 G = G.canonical_label()
 automs = G.automorphism_group()
@@ -193,129 +199,31 @@ def our_condition(H):
             return True
     return False
 
-for n in range(1, 9):
-    print(f"\nn={n} ---")
-    for H in graphs.nauty_geng(f'{n}'):
-        l = H.canonical_label().graph6_string() + " (" + graph_to_string(H.canonical_label()) + ")"
-        if basic_condition(H):
-            if our_condition(H): print(f"{l} satisfies our condition -> m={n}")
-            elif pikhurko_clebsch_condition(H): print(f"{l} satisfies (3) -> m={n+1}")
-            elif pikhurko_clebsch_condition_plus(H): print(f"{l} satisfies (3+) -> m={n+1}")
-            else: print(f"{l} satisfies (2) -> m={n+2}")
 
-exit()
+print(f"Starting with {G.graph6_string()} (canonical is {G.canonical_label().graph6_string()})")
 
-for n in range(1, 9):
-    print(f"\nn = {n}")
-    for H in list(graphs.nauty_geng(f"{n}")):
-        if uniquely_embeds(H) and defines_unique_neighborhoods(H): print(f"{H.canonical_label().graph6_string()} {graph_to_string(H)}")
+good_types = [Graph(l).canonical_label().graph6_string() for l in good_types]
 
-exit()
-
-G = Graph(5)
-G.add_edge(0,1)
-G.add_edge(1,2)
-#G.add_edge(0,2)
-G.add_edge(3,4)
-
-automs = G.automorphism_group()
-nautoms = automs.order()
-
-H = Graph(4)
-H.add_edge(0,1)
-H.add_edge(2,3)
-
-print(uniquely_embeds(H))
-
-exit()
-
-H = Graph('CK')
-
-for n in range(1, 11):
-    for G in tqdm(list(graphs.nauty_geng(f"{n}"))):
-        if G.subgraph_search(H, induced=True) is None: continue
-        automs = G.automorphism_group()
-        nautoms = automs.order()
-        if (uniquely_embeds(H) and nembeddings(H) != 1) or ((not uniquely_embeds(H)) and nembeddings(H) == 1):
-            print(f"{G.canonical_label().graph6_string()} {H.canonical_label().graph6_string()} {nembeddings(H)} {uniquely_embeds(H)} {G.automorphism_group().order()} {H.automorphism_group().order()} {G.subgraph_search_count(H, induced=True)}")
-            exit()
-        #if uniquely_embeds(H): print(f"{H.canonical_label().graph6_string()}")
-
-exit()
-
-for k in range(1, G.order()+1):
-    for H in tqdm(list(graphs.nauty_geng(f"{k}"))):
-        if G.subgraph_search(H, induced=True) is None: continue
-        if (uniquely_embeds(H) and nembeddings(H) != 1) or ((not uniquely_embeds(H)) and nembeddings(H) == 1):
-            print(f"{G.canonical_label().graph6_string()} {H.canonical_label().graph6_string()} {nembeddings(H)} {uniquely_embeds(H)} {G.automorphism_group().order()} {H.automorphism_group().order()} {G.subgraph_search_count(H, induced=True)}")
-            exit()
-        #if uniquely_embeds(H): print(f"{H.canonical_label().graph6_string()}")
-exit()
-
-for n in range(1,9):
-    for G in tqdm(list(graphs.nauty_geng(f"{n}"))):
-        for k in range(1, n+1):
-            for H in graphs.nauty_geng(f"{k}"):
-                if G.subgraph_search(H, induced=True) is None: continue
-                automs = G.automorphism_group()
-                nautoms = automs.order()
-                if (uniquely_embeds(H) and nembeddings(H) != 1) and ((not uniquely_embeds(H)) and nembeddings(H) == 1):
-                    print(f"{G.canonical_label().graph6_string()} {H.canonical_label().graph6_string()} {nembeddings(H)} {uniquely_embeds(H)} {G.automorphism_group().order()} {H.automorphism_group().order()} {G.subgraph_search_count(H, induced=True)}")
-                    exit()
-
-
-exit()
-
-
-for n in range(1, 9):
-    print(f"\nn = {n} ===")
-    for H in graphs.nauty_geng(f'{n}'):
-        if G.subgraph_search(H, induced=True) is not None:
-            label = H.canonical_label().graph6_string()
-            l = label + " (" + graph_to_string(H.canonical_label()) + ")"
-            print(f"{label} {nembeddings(H)} {uniquely_embeds(H)} {G.subgraph_search_count(H, induced=True)}")
-
-exit()
-
-temp = {}
-cands = [r"D?C", "D@K", r"D_K", r"D@s", r"D@{", r"DBg", r"DBk", r"DIk", r"DB{", r"D`K", r"DK[", r"DK{", r"DJ[", r"DJk", "DJ{", "DLo", r"Dbk", r"DL{", r"DNw", r"DN{"]
-for H in graphs.nauty_geng('5'):
-    label = H.canonical_label().graph6_string()
-    l = label + " (" + graph_to_string(H.canonical_label()) + ")"
-    if uniquely_embeds(H) and label in cands:
-        temp[label] = unique_neighborhoods(H)
-        print(f"{label} {unique_neighborhoods(H)}")
-
-curr_best = 0
-for k in range(1, len(temp)+1):
-    for X in itertools.combinations(temp.keys(), k):
-        S = []
-        for x in X: S += temp[x]
-        S = set(S)
-        if len(S) > curr_best:
-            curr_best = len(S)
-            print(f"{X}: {S}")
-        
-exit()
-
-
-#for k in range(2, 7):
-#    seen = []
-#    print(f"\nk={k}")
-#    for X in itertools.combinations(G.vertices(), k):
-#        H = G.subgraph(X)
-#        H_label = H.canonical_label().graph6_string()
-#        if H_label in seen: continue
-#        seen.append(H_label)
-#        if defines_unique_neighborhoods(X):
-#            if G.subgraph_search_count(H, induced=True) == nautoms:
-#                assert uniquely_embeds(H)
-#                print(H_label)
-
-#                H = G.subgraph_search(Graph(H_label), induced=True)
-#                assert uniquely_embeds(H)
-#                assert defines_unique_neighborhoods(H.vertices())
-#                assert G.subgraph_search_count(H, induced=True) == nautoms
-
-
-
+for l in good_types:
+    H = Graph(l)
+    if uniquely_embeds(H):
+        H = G.subgraph_search(H)
+        X1 = list(H.vertices())
+        settled = unique_neighborhoods(X1)
+        print(f"\nStarting with {l} ({graph_to_string(Graph(l))}) through {X1} giving {len(settled)} ({settled})")
+        while len(settled) < G.order():
+            nextX = {}
+            for Xcand in itertools.combinations(X1+settled, 5):
+                lcand = G.subgraph(Xcand).canonical_label().graph6_string()
+                if lcand in good_types:
+                    nextX[Xcand] = len([x for x in unique_neighborhoods(Xcand) if x not in settled])
+                    if nextX[Xcand] == G.order()-len(settled): break
+            if len(nextX) == 0 or max(nextX.values())==0:
+                print(f"failed!")
+                break
+            best_nextX = max(nextX, key=nextX.get)
+            best_l = G.subgraph(best_nextX).canonical_label().graph6_string()
+            assert best_l in good_types
+            new = [x for x in unique_neighborhoods(Xcand) if x not in settled]
+            settled += new
+            print(f"Adding {best_l} ({graph_to_string(Graph(best_l))}) through {best_nextX} giving {nextX[best_nextX]} ({new}) for {len(settled)}")

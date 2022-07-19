@@ -412,6 +412,7 @@ if action == "print qdash_matrices":
 
 
 if action == "print types of co-rank 1":
+    from flagmatic.all import GraphFlag
 
     print("\nVerifying which types have matrices of co-rank 1 associated with them:")
     
@@ -419,8 +420,10 @@ if action == "print types of co-rank 1":
         Tgraph = Tgraph.minimal_isomorph()
         itau = types.index(Tgraph)
 
+        G = GraphFlag(str(Tgraph)).Graph()
+
         if len(certificate["qdash_matrices"][itau]) == len(flags[itau])-1:
-            print(f"type {itau}: {Tgraph}")
+            print(f"type {itau}: {G.canonical_label().graph6_string()} ({Tgraph})")
 
 print("Computing Q matrices...")
 
