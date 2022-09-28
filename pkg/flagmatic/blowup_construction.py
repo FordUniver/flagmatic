@@ -500,10 +500,10 @@ def GraphBlowupConstruction(graph, **kwargs):
 def ThreeGraphBlowupConstruction(graph, **kwargs):
     if isinstance(graph, str):
         graph = ThreeGraphFlag(graph)
-    return BlowupConstruction(graph, **kwargs)
+    return BlowupConstruction(graph, nauty_presort=False, **kwargs)
 
 
 def OrientedGraphBlowupConstruction(graph, **kwargs):
     if isinstance(graph, str):
         graph = OrientedGraphFlag(graph)
-    return BlowupConstruction(graph, **kwargs)
+    return BlowupConstruction(graph, nauty_presort=False, **kwargs)

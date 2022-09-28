@@ -1,4 +1,4 @@
-FROM sagemath/sagemath:9.4
+FROM sagemath/sagemath:9.5
 # ubuntu:latest
 # ENV DEBIAN_FRONTEND=noninteractive
 # ENV TZ=Europe/Berlin
@@ -13,8 +13,8 @@ RUN git clone https://github.com/xianyi/OpenBLAS.git && cd OpenBLAS && make --jo
 RUN git clone https://github.com/FordUniver/Csdp.git && cd Csdp && git checkout openblas && make --jobs=$(nproc) && make --jobs=$(nproc) install && cd .. && rm -rf Csdp
 
 # Double precision variant of SDP is causing issues currently
-RUN git clone https://github.com/scibuilder/QD.git && cd QD && ./configure --prefix=/usr/local/qd && make --jobs=$(nproc) && make --jobs=$(nproc) install && cd / && rm -rf QD
-RUN git clone https://github.com/ericphanson/sdpa-dd.git && cd sdpa-dd && ./configure --with-qd-includedir=/usr/local/qd/include --with-qd-libdir=/usr/local/qd/lib && make --jobs=$(nproc) && cp sdpa_dd /usr/bin && cd / && rm -rf sdpa_dd
+# RUN git clone https://github.com/scibuilder/QD.git && cd QD && ./configure --prefix=/usr/local/qd && make --jobs=$(nproc) && make --jobs=$(nproc) install && cd / && rm -rf QD
+# RUN git clone https://github.com/ericphanson/sdpa-dd.git && cd sdpa-dd && ./configure --with-qd-includedir=/usr/local/qd/include --with-qd-libdir=/usr/local/qd/lib && make --jobs=$(nproc) && cp sdpa_dd /usr/bin && cd / && rm -rf sdpa_dd
 #RUN git clone https://github.com/ericphanson/sdpa-qd.git && cd sdpa-qd && ./configure --with-qd-includedir=/usr/local/qd/include --with-qd-libdir=/usr/local/qd/lib && make --jobs=$(nproc) && cp sdpa_qd /usr/bin && cd / && rm -rf sdpa_qd
 
 USER sage
