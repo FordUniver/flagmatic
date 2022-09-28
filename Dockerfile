@@ -5,6 +5,7 @@ FROM sagemath/sagemath:9.4
 
 USER root
 
+RUN sed -i -e 's/archive.ubuntu.com\|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
 RUN apt-get update && apt-get install -y build-essential sdpa gfortran make cmake git
 
 # Compile OpenBLAS and CSDP form scratch for best performance
